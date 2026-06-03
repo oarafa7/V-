@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "VITAL",
+    "slug": "vital",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "vital",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#090B0E"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.vital.mobile"
+    },
+    "android": {
+      "package": "app.vital.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#090B0E"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
