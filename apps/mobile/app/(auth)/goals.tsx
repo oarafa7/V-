@@ -2,19 +2,21 @@
  * Health Goals — card grid; user selects up to 3. On completion saves to
  * users.health_goals and routes to the subscription plans.
  */
+import type { HealthGoalOption } from '@vital/shared';
 import { goalsSchema, type HealthGoal } from '@vital/shared';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { Button, LucideIcon, Screen, toast } from '@/components/ui';
 import { HEALTH_GOAL_OPTIONS } from '@/constants/biomarkers';
 import { colors } from '@/constants/theme';
-import { ApiError, userApi } from '@/lib/api';
+import { ApiError, contentApi, userApi } from '@/lib/api';
 import { useAuthStore } from '@/lib/store/auth';
 import { useOnboardingStore } from '@/lib/store/onboarding';
 
 const MAX = 3;
+const FALLBACK: HealthGoalOption[] = HEALTH_GOAL_OPTIONS.map((g) => ({ ...g, id: g.value, slug: g.value, display_order: 0, is_active: true }));
 
 export default function Goals() {
   const router = useRouter();
@@ -23,6 +25,15 @@ export default function Goals() {
   const reset = useOnboardingStore((s) => s.reset);
   const refreshUser = useAuthStore((s) => s.refreshUser);
   const [saving, setSaving] = useState(false);
+  const [goalOptions, setGoalOptions] = useState<HealthGoalOption[]>([]);
+  const [loadingGoals, setLoadingGoals] = useState(true);
+
+  useEffect(() => {
+    contentApi.goals()
+      .then((r) => setGoalOptions(r.goals.filter((g) => g.is_active)))
+      .catch(() => setGoalOptions(FALLBACK))
+      .finally(() => setLoadingGoals(false));
+  }, []);
 
   const toggle = (goal: HealthGoal) => {
     if (selected.includes(goal)) {
@@ -62,13 +73,17 @@ export default function Goals() {
         Choose up to {MAX}. We'll tailor your experience.
       </Text>
 
+      {loadingGoals ? (
+        <ActivityIndicator color={colors.gold} style={{ marginVertical: 32 }} />
+      ) : null}
+
       <View className="flex-row flex-wrap" style={{ marginHorizontal: -6 }}>
-        {HEALTH_GOAL_OPTIONS.map((g) => {
-          const isSelected = selected.includes(g.value);
+        {goalOptions.map((g) => {
+          const isSelected = selected.includes(g.slug);
           return (
-            <View key={g.value} style={{ width: '50%', padding: 6 }}>
+            <View key={g.id} style={{ width: '50%', padding: 6 }}>
               <Pressable
-                onPress={() => toggle(g.value)}
+                onPress={() => toggle(g.slug)}
                 className="rounded-lg border p-4"
                 style={{
                   backgroundColor: isSelected ? `${colors.gold}1A` : colors.surface,

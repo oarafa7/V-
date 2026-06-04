@@ -3,7 +3,7 @@
  * pulsing radial glow stands in for the animated background.
  */
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import Animated, {
   Easing,
@@ -16,11 +16,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/ui';
 import { colors } from '@/constants/theme';
+import { contentApi } from '@/lib/api';
+
+const DEFAULT_TAGLINE = 'Know your body.\nBefore it fails you.';
 
 export default function Welcome() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const pulse = useSharedValue(0.6);
+  const [tagline, setTagline] = useState(DEFAULT_TAGLINE);
+
+  useEffect(() => {
+    contentApi.get()
+      .then((r) => { if (r.content.welcome_tagline) setTagline(r.content.welcome_tagline); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     pulse.value = withRepeat(
@@ -62,7 +72,7 @@ export default function Welcome() {
           className="mt-4 text-center font-body"
           style={{ color: colors.text, fontSize: 18, lineHeight: 26 }}
         >
-          Know your body.{'\n'}Before it fails you.
+          {tagline}
         </Text>
       </View>
 

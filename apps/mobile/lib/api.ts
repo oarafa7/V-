@@ -5,10 +5,12 @@
  */
 import type {
   ApiError as ApiErrorEnvelope,
+  AppContent,
   BiomarkerListResponse,
   BiomarkerWithResult,
   CreateResultInput,
   GoalsInput,
+  HealthGoalOption,
   HealthProfileInput,
   LoginInput,
   SignupInput,
@@ -132,6 +134,12 @@ export const biomarkerApi = {
   get: (id: string) => request<{ biomarker: BiomarkerWithResult }>(`/biomarkers/${id}`),
   categories: () =>
     request<{ categories: BiomarkerListResponse['categories'] }>('/biomarker-categories'),
+};
+
+// ── Public content ────────────────────────────────────────────────────────────
+export const contentApi = {
+  get: () => request<{ content: AppContent }>('/app-content', { auth: false }),
+  goals: () => request<{ goals: HealthGoalOption[] }>('/health-goals', { auth: false }),
 };
 
 // ── Results ───────────────────────────────────────────────────────────────────

@@ -178,6 +178,29 @@ export interface ParsedLabRow {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// health_goals (admin-managed onboarding goal options)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const healthGoals = pgTable('health_goals', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  slug: text('slug').notNull().unique(),
+  label: text('label').notNull(),
+  icon: text('icon').notNull().default(''),
+  displayOrder: integer('display_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// app_settings (admin-managed app content: tagline, lab partner, support, …)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const appSettings = pgTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').$type<unknown>().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Relations
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -233,3 +256,5 @@ export type BiomarkerRow = typeof biomarkers.$inferSelect;
 export type UserBiomarkerResultRow = typeof userBiomarkerResults.$inferSelect;
 export type LabUploadRow = typeof labUploads.$inferSelect;
 export type NewLabUploadRow = typeof labUploads.$inferInsert;
+export type HealthGoalRow = typeof healthGoals.$inferSelect;
+export type AppSettingRow = typeof appSettings.$inferSelect;

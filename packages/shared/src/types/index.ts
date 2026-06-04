@@ -38,6 +38,7 @@ export type CategorySlug =
   | 'hepatic'
   | 'blood';
 
+/** Default goal slugs used to seed the (now admin-managed) health_goals table. */
 export const HEALTH_GOALS = [
   'optimize_energy',
   'metabolic_health',
@@ -49,7 +50,21 @@ export const HEALTH_GOALS = [
   'general_awareness',
 ] as const;
 
-export type HealthGoal = (typeof HEALTH_GOALS)[number];
+/**
+ * A user's stored health goal is a slug. Goals are managed in the dashboard, so
+ * this is a plain string rather than a fixed union.
+ */
+export type HealthGoal = string;
+
+/** An admin-managed onboarding goal option. */
+export interface HealthGoalOption {
+  id: UUID;
+  slug: string;
+  label: string;
+  icon: string;
+  display_order: number;
+  is_active: boolean;
+}
 
 export const CHRONIC_CONDITIONS = [
   'diabetes',
@@ -236,6 +251,35 @@ export interface AdminOverview {
   pending_uploads: number;
   plan_breakdown: { plan: PlanName; count: number }[];
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// App content / settings (admin-managed, surfaced in the mobile app)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface LabPartnerInfo {
+  name: string;
+  description: string;
+  phone: string;
+  url: string;
+}
+
+/** The structured, mobile-facing content bundle. Keys map to app_settings rows. */
+export interface AppContent {
+  welcome_tagline: string;
+  support_email: string;
+  lab_partner: LabPartnerInfo;
+}
+
+export const DEFAULT_APP_CONTENT: AppContent = {
+  welcome_tagline: 'Know your body.\nBefore it fails you.',
+  support_email: 'support@vital.app',
+  lab_partner: {
+    name: 'VITAL Lab Partners',
+    description: 'Book your comprehensive panel at a partner lab near you.',
+    phone: '',
+    url: '',
+  },
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API envelopes

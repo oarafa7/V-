@@ -11,12 +11,17 @@ import {
   type AdminUserSummary,
   adminCreateResultSchema,
   adminUpdateUserSchema,
+  appContentSchema,
   biomarkerInputSchema,
   categoryInputSchema,
   categoryUpdateSchema,
   confirmLabUploadSchema,
+  grantSubscriptionSchema,
+  healthGoalInputSchema,
+  healthGoalUpdateSchema,
   planInputSchema,
   planUpdateSchema,
+  updateSubscriptionSchema,
 } from '@vital/shared';
 import { and, asc, desc, eq, gt, ilike, inArray, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
@@ -25,17 +30,20 @@ import { db } from '../db/client.js';
 import {
   biomarkerCategories,
   biomarkers,
+  healthGoals,
   labUploads,
   subscriptionPlans,
   subscriptions,
   userBiomarkerResults,
   users,
 } from '../db/schema.js';
+import { getAppContent, setAppContent } from '../lib/content.js';
 import { errorResponse } from '../lib/http.js';
 import { parseLabPdf } from '../lib/lab-pdf.js';
 import {
   serializeBiomarker,
   serializeCategory,
+  serializeHealthGoal,
   serializeLabUpload,
   serializePlan,
   serializeResult,
@@ -607,4 +615,133 @@ adminRoutes.delete('/biomarkers/:id', async (c) => {
     .returning();
   if (!row) return errorResponse(c, 'not_found', 'Biomarker not found');
   return c.json({ success: true });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Subscriptions (grant / update / cancel)
+// ─────────────────────────────────────────────────────────────────────────────
+
+adminRoutes.post(
+  '/users/:id/subscription',
+  validate('json', grantSubscriptionSchema),
+  async (c) => {
+    const userId = c.req.param('id');
+    const { plan_id, months, payment_reference } = c.req.valid('json');
+
+    const [user] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1);
+    if (!user) return errorResponse(c, 'not_found', 'User not found');
+
+    const [plan] = await db
+      .select({ id: subscriptionPlans.id })
+      .from(subscriptionPlans)
+      .where(eq(subscriptionPlans.id, plan_id))
+      .limit(1);
+    if (!plan) return errorResponse(c, 'not_found', 'Plan not found');
+
+    // Supersede any currently-active subscription, then grant the new one.
+    await db
+      .update(subscriptions)
+      .set({ status: 'expired' })
+      .where(and(eq(subscriptions.userId, userId), eq(subscriptions.status, 'active')));
+
+    const expiresAt = new Date();
+    expiresAt.setMonth(expiresAt.getMonth() + (months ?? 12));
+
+    const [row] = await db
+      .insert(subscriptions)
+      .values({
+        userId,
+        planId: plan_id,
+        status: 'active',
+        startedAt: new Date(),
+        expiresAt,
+        paymentReference: payment_reference ?? 'admin_grant',
+      })
+      .returning();
+
+    return c.json({ subscription: serializeSubscription(row!) }, 201);
+  },
+);
+
+adminRoutes.put(
+  '/subscriptions/:id',
+  validate('json', updateSubscriptionSchema),
+  async (c) => {
+    const id = c.req.param('id');
+    const b = c.req.valid('json');
+    const [row] = await db
+      .update(subscriptions)
+      .set({
+        ...(b.status !== undefined ? { status: b.status } : {}),
+        ...(b.plan_id !== undefined ? { planId: b.plan_id } : {}),
+        ...(b.expires_at !== undefined ? { expiresAt: new Date(b.expires_at) } : {}),
+      })
+      .where(eq(subscriptions.id, id))
+      .returning();
+    if (!row) return errorResponse(c, 'not_found', 'Subscription not found');
+    return c.json({ subscription: serializeSubscription(row) });
+  },
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Health goals
+// ─────────────────────────────────────────────────────────────────────────────
+
+adminRoutes.get('/health-goals', async (c) => {
+  const rows = await db.select().from(healthGoals).orderBy(asc(healthGoals.displayOrder));
+  return c.json({ goals: rows.map(serializeHealthGoal) });
+});
+
+adminRoutes.post('/health-goals', validate('json', healthGoalInputSchema), async (c) => {
+  const b = c.req.valid('json');
+  const [row] = await db
+    .insert(healthGoals)
+    .values({
+      slug: b.slug,
+      label: b.label,
+      icon: b.icon ?? '',
+      displayOrder: b.display_order ?? 0,
+      isActive: b.is_active ?? true,
+    })
+    .returning();
+  return c.json({ goal: serializeHealthGoal(row!) }, 201);
+});
+
+adminRoutes.put('/health-goals/:id', validate('json', healthGoalUpdateSchema), async (c) => {
+  const id = c.req.param('id');
+  const b = c.req.valid('json');
+  const [row] = await db
+    .update(healthGoals)
+    .set({
+      ...(b.slug !== undefined ? { slug: b.slug } : {}),
+      ...(b.label !== undefined ? { label: b.label } : {}),
+      ...(b.icon !== undefined ? { icon: b.icon } : {}),
+      ...(b.display_order !== undefined ? { displayOrder: b.display_order } : {}),
+      ...(b.is_active !== undefined ? { isActive: b.is_active } : {}),
+    })
+    .where(eq(healthGoals.id, id))
+    .returning();
+  if (!row) return errorResponse(c, 'not_found', 'Goal not found');
+  return c.json({ goal: serializeHealthGoal(row) });
+});
+
+adminRoutes.delete('/health-goals/:id', async (c) => {
+  const id = c.req.param('id');
+  const [deleted] = await db.delete(healthGoals).where(eq(healthGoals.id, id)).returning();
+  if (!deleted) return errorResponse(c, 'not_found', 'Goal not found');
+  return c.json({ success: true });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// App content / settings
+// ─────────────────────────────────────────────────────────────────────────────
+
+adminRoutes.get('/app-content', async (c) => {
+  const content = await getAppContent();
+  return c.json({ content });
+});
+
+adminRoutes.put('/app-content', validate('json', appContentSchema), async (c) => {
+  const content = await setAppContent(c.req.valid('json'));
+  return c.json({ content });
 });

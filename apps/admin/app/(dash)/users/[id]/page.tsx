@@ -1,6 +1,6 @@
 'use client';
 
-import type { AdminUserDetail, Biomarker, LabUpload, ParsedLabRow } from '@vital/shared';
+import type { AdminUserDetail, Biomarker, LabUpload, ParsedLabRow, SubscriptionPlan } from '@vital/shared';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -29,19 +29,22 @@ export default function UserDetailPage() {
 
   const [detail, setDetail] = useState<AdminUserDetail | null>(null);
   const [biomarkers, setBiomarkers] = useState<Biomarker[]>([]);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [editOpen, setEditOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [subOpen, setSubOpen] = useState(false);
   const [review, setReview] = useState<LabUpload | null>(null);
 
   const bmById = useMemo(() => new Map(biomarkers.map((b) => [b.id, b])), [biomarkers]);
 
   const load = async () => {
     try {
-      const [d, b] = await Promise.all([api.user(id), api.biomarkers()]);
+      const [d, b, p] = await Promise.all([api.user(id), api.biomarkers(), api.plans()]);
       setDetail(d);
       setBiomarkers(b.biomarkers);
+      setPlans(p.plans);
     } catch (e) {
       push('error', e instanceof ApiError ? e.message : 'Failed to load user');
     } finally {
@@ -64,6 +67,18 @@ export default function UserDetailPage() {
     try {
       await api.deleteResult(rid);
       push('success', 'Result deleted');
+      void load();
+    } catch (e) {
+      push('error', e instanceof ApiError ? e.message : 'Failed');
+    }
+  };
+
+  const cancelSubscription = async () => {
+    if (!subscription) return;
+    if (!confirm('Cancel this subscription? The user will lose access to biomarker data.')) return;
+    try {
+      await api.updateSubscription(subscription.id, { status: 'cancelled' });
+      push('success', 'Subscription cancelled');
       void load();
     } catch (e) {
       push('error', e instanceof ApiError ? e.message : 'Failed');
@@ -104,7 +119,21 @@ export default function UserDetailPage() {
           </dl>
         </Card>
         <Card className="p-5">
-          <h3 className="mb-3 font-display text-lg font-bold text-ink">Subscription</h3>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="font-display text-lg font-bold text-ink">Subscription</h3>
+            <div className="flex gap-3">
+              {subscription ? (
+                <>
+                  <button onClick={() => setSubOpen(true)} className="text-sm text-greenInk hover:underline">Edit</button>
+                  {subscription.status === 'active' ? (
+                    <button onClick={cancelSubscription} className="text-sm text-rust hover:underline">Cancel</button>
+                  ) : null}
+                </>
+              ) : (
+                <button onClick={() => setSubOpen(true)} className="text-sm text-greenInk hover:underline">Grant</button>
+              )}
+            </div>
+          </div>
           {subscription ? (
             <dl className="space-y-2 text-sm">
               <Row k="Plan" v={subscription.plan.name} />
@@ -181,6 +210,15 @@ export default function UserDetailPage() {
       ) : null}
       {review ? (
         <ReviewModal upload={review} biomarkers={biomarkers} onClose={() => setReview(null)} onConfirmed={() => { setReview(null); void load(); }} />
+      ) : null}
+      {subOpen ? (
+        <SubscriptionModal
+          userId={id}
+          plans={plans}
+          current={subscription}
+          onClose={() => setSubOpen(false)}
+          onSaved={() => { setSubOpen(false); void load(); }}
+        />
       ) : null}
     </div>
   );
@@ -394,6 +432,87 @@ function AddResultModal({
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Grant / edit subscription ────────────────────────────────────────────────
+function SubscriptionModal({
+  userId,
+  plans,
+  current,
+  onClose,
+  onSaved,
+}: {
+  userId: string;
+  plans: SubscriptionPlan[];
+  current: AdminUserDetail['subscription'];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { push } = useToast();
+  const editing = !!current;
+  const [planId, setPlanId] = useState(current?.plan.id ?? plans[0]?.id ?? '');
+  const [months, setMonths] = useState(12);
+  const [status, setStatus] = useState<'active' | 'expired' | 'cancelled'>(current?.status ?? 'active');
+  const [expiresAt, setExpiresAt] = useState(
+    current ? new Date(current.expires_at).toISOString().slice(0, 10) : '',
+  );
+  const [busy, setBusy] = useState(false);
+
+  const save = async () => {
+    if (!planId) return push('error', 'Pick a plan');
+    setBusy(true);
+    try {
+      if (editing && current) {
+        await api.updateSubscription(current.id, {
+          status,
+          plan_id: planId,
+          expires_at: expiresAt ? new Date(`${expiresAt}T00:00:00Z`).toISOString() : undefined,
+        });
+      } else {
+        await api.grantSubscription(userId, { plan_id: planId, months });
+      }
+      push('success', editing ? 'Subscription updated' : 'Subscription granted');
+      onSaved();
+    } catch (e) {
+      push('error', e instanceof ApiError ? e.message : 'Failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title={editing ? 'Edit subscription' : 'Grant subscription'}>
+      <div className="space-y-4">
+        <Field label="Plan">
+          <Select value={planId} onChange={(e) => setPlanId(e.target.value)}>
+            {plans.map((p) => (
+              <option key={p.id} value={p.id}>{p.name} — {p.price_egp.toLocaleString()} EGP{p.is_active ? '' : ' (inactive)'}</option>
+            ))}
+          </Select>
+        </Field>
+        {editing ? (
+          <>
+            <Field label="Status">
+              <Select value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
+                <option value="active">active</option>
+                <option value="expired">expired</option>
+                <option value="cancelled">cancelled</option>
+              </Select>
+            </Field>
+            <Field label="Expires"><Input type="date" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} /></Field>
+          </>
+        ) : (
+          <Field label="Duration (months)">
+            <Input type="number" value={months} onChange={(e) => setMonths(Number(e.target.value))} min={1} max={60} />
+          </Field>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button onClick={save} disabled={busy}>{busy ? 'Saving…' : editing ? 'Save' : 'Grant'}</Button>
         </div>
       </div>
     </Modal>

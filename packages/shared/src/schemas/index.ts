@@ -84,9 +84,10 @@ export const healthProfileSchema = z.object({
 });
 export type HealthProfileInput = z.infer<typeof healthProfileSchema>;
 
+// Goals are admin-managed slugs; validate shape, not a fixed enum.
 export const goalsSchema = z.object({
   health_goals: z
-    .array(healthGoalSchema)
+    .array(z.string().min(1).max(60))
     .min(1, 'Pick at least one goal')
     .max(3, 'Pick up to 3 goals'),
 });
@@ -239,3 +240,49 @@ export const biomarkerInputSchema = z
     },
   );
 export type BiomarkerInput = z.infer<typeof biomarkerInputSchema>;
+
+// Subscription management (admin)
+export const grantSubscriptionSchema = z.object({
+  plan_id: z.string().uuid(),
+  months: z.number().int().min(1).max(60).optional().default(12),
+  payment_reference: z.string().max(120).optional(),
+});
+export type GrantSubscriptionInput = z.infer<typeof grantSubscriptionSchema>;
+
+export const updateSubscriptionSchema = z
+  .object({
+    status: z.enum(['active', 'expired', 'cancelled']).optional(),
+    plan_id: z.string().uuid().optional(),
+    expires_at: z.string().datetime().optional(),
+  })
+  .refine((b) => b.status || b.plan_id || b.expires_at, {
+    message: 'Provide at least one field to update',
+  });
+export type UpdateSubscriptionInput = z.infer<typeof updateSubscriptionSchema>;
+
+// Health goals CRUD (admin)
+export const healthGoalInputSchema = z.object({
+  slug: z.string().regex(/^[a-z0-9_]+$/, 'lowercase, digits, underscores'),
+  label: z.string().min(1).max(80),
+  icon: z.string().max(40).optional().default(''),
+  display_order: z.number().int().min(0).optional().default(0),
+  is_active: z.boolean().optional().default(true),
+});
+export type HealthGoalInput = z.infer<typeof healthGoalInputSchema>;
+export const healthGoalUpdateSchema = healthGoalInputSchema.partial();
+export type HealthGoalUpdateInput = z.infer<typeof healthGoalUpdateSchema>;
+
+// App content / settings (admin)
+export const labPartnerSchema = z.object({
+  name: z.string().max(120).default(''),
+  description: z.string().max(600).default(''),
+  phone: z.string().max(40).default(''),
+  url: z.string().max(300).default(''),
+});
+
+export const appContentSchema = z.object({
+  welcome_tagline: z.string().max(200),
+  support_email: z.string().email().or(z.literal('')),
+  lab_partner: labPartnerSchema,
+});
+export type AppContentInput = z.infer<typeof appContentSchema>;

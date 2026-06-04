@@ -3,11 +3,11 @@
  * explanatory sections, related biomarkers, and a sticky action bar with manual
  * result entry.
  */
-import type { BiomarkerWithResult, UserBiomarkerResult } from '@vital/shared';
-import { STATUS_LABELS } from '@vital/shared';
+import type { AppContent, BiomarkerWithResult, UserBiomarkerResult } from '@vital/shared';
+import { DEFAULT_APP_CONTENT, STATUS_LABELS } from '@vital/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ManualResultSheet } from '@/components/biomarker/ManualResultSheet';
@@ -22,7 +22,7 @@ import {
   StatusBadge,
 } from '@/components/ui';
 import { colors, statusColors } from '@/constants/theme';
-import { ApiError, biomarkerApi, resultApi } from '@/lib/api';
+import { ApiError, biomarkerApi, contentApi, resultApi } from '@/lib/api';
 import { formatDate, formatNumber } from '@/lib/format';
 import { useLibraryStore } from '@/lib/store/library';
 import { toast } from '@/components/ui';
@@ -51,6 +51,11 @@ export default function BiomarkerDetail() {
   const [loading, setLoading] = useState(true);
   const [rangeMode, setRangeMode] = useState<'optimal' | 'normal'>('optimal');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [appContent, setAppContent] = useState<AppContent>(DEFAULT_APP_CONTENT);
+
+  useEffect(() => {
+    contentApi.get().then((r) => setAppContent(r.content)).catch(() => {});
+  }, []);
 
   const allBiomarkers = useLibraryStore((s) => s.biomarkers);
   const refreshLibrary = useLibraryStore((s) => s.fetch);
@@ -278,7 +283,11 @@ export default function BiomarkerDetail() {
             label="Book a Test"
             variant="secondary"
             icon="Calendar"
-            onPress={() => toast.info('Lab partner booking — available with your panel')}
+            onPress={() => {
+              const url = appContent.lab_partner.url;
+              if (url) Linking.openURL(url).catch(() => toast.info('Could not open booking page'));
+              else toast.info(`Contact ${appContent.lab_partner.name || 'our lab partner'} to book`);
+            }}
           />
         </View>
         <View className="flex-1">

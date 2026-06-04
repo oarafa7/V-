@@ -15,6 +15,13 @@
       "when": 1780548995286,
       "tag": "0001_admin_roles_lab_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780574146370,
+      "tag": "0002_goals_and_settings",
+      "breakpoints": true
     }
   ]
 }

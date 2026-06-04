@@ -6,6 +6,7 @@
 import type {
   Biomarker,
   BiomarkerCategory,
+  HealthGoalOption,
   LabUpload,
   Subscription,
   SubscriptionPlan,
@@ -16,6 +17,7 @@ import type {
 import type {
   BiomarkerCategoryRow,
   BiomarkerRow,
+  HealthGoalRow,
   LabUploadRow,
   SubscriptionPlanRow,
   SubscriptionRow,
@@ -122,6 +124,17 @@ export function serializeResult(row: UserBiomarkerResultRow): UserBiomarkerResul
     source: (row.source as UserBiomarkerResult['source']) ?? 'manual',
     lab_upload_id: row.labUploadId ?? null,
     created_at: iso(row.createdAt),
+  };
+}
+
+export function serializeHealthGoal(row: HealthGoalRow): HealthGoalOption {
+  return {
+    id: row.id,
+    slug: row.slug,
+    label: row.label,
+    icon: row.icon,
+    display_order: row.displayOrder,
+    is_active: row.isActive,
   };
 }
 

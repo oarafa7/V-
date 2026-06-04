@@ -11,6 +11,8 @@ const NAV = [
   { href: '/plans', label: 'Plans & Pricing' },
   { href: '/biomarkers', label: 'Biomarkers' },
   { href: '/categories', label: 'Categories' },
+  { href: '/goals', label: 'Health Goals' },
+  { href: '/content', label: 'App Content' },
 ];
 
 export function Sidebar() {

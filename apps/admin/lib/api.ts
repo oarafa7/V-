@@ -7,16 +7,24 @@ import type {
   AdminUpdateUserInput,
   AdminUserDetail,
   AdminUserSummary,
+  AppContent,
+  AppContentInput,
   Biomarker,
   BiomarkerCategory,
   BiomarkerInput,
   CategoryInput,
   CategoryUpdateInput,
   ConfirmLabUploadInput,
+  GrantSubscriptionInput,
+  HealthGoalInput,
+  HealthGoalOption,
+  HealthGoalUpdateInput,
   LabUpload,
   PlanInput,
   PlanUpdateInput,
+  Subscription,
   SubscriptionPlan,
+  UpdateSubscriptionInput,
   User,
   UserBiomarkerResult,
 } from '@vital/shared';
@@ -160,4 +168,27 @@ export const api = {
     request<{ biomarker: Biomarker }>(`/admin/biomarkers/${id}`, { method: 'PUT', body }),
   deleteBiomarker: (id: string) =>
     request<{ success: boolean }>(`/admin/biomarkers/${id}`, { method: 'DELETE' }),
+
+  // subscriptions
+  grantSubscription: (userId: string, body: GrantSubscriptionInput) =>
+    request<{ subscription: Subscription }>(`/admin/users/${userId}/subscription`, {
+      method: 'POST',
+      body,
+    }),
+  updateSubscription: (id: string, body: UpdateSubscriptionInput) =>
+    request<{ subscription: Subscription }>(`/admin/subscriptions/${id}`, { method: 'PUT', body }),
+
+  // health goals
+  goals: () => request<{ goals: HealthGoalOption[] }>('/admin/health-goals'),
+  createGoal: (body: HealthGoalInput) =>
+    request<{ goal: HealthGoalOption }>('/admin/health-goals', { method: 'POST', body }),
+  updateGoal: (id: string, body: HealthGoalUpdateInput) =>
+    request<{ goal: HealthGoalOption }>(`/admin/health-goals/${id}`, { method: 'PUT', body }),
+  deleteGoal: (id: string) =>
+    request<{ success: boolean }>(`/admin/health-goals/${id}`, { method: 'DELETE' }),
+
+  // app content
+  content: () => request<{ content: AppContent }>('/admin/app-content'),
+  saveContent: (body: AppContentInput) =>
+    request<{ content: AppContent }>('/admin/app-content', { method: 'PUT', body }),
 };

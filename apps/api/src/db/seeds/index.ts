@@ -6,10 +6,18 @@
  * client, imported from `@vital/shared/data`.
  */
 import { BIOMARKER_SEED, CATEGORY_SEED } from '@vital/shared/data/biomarkers.js';
+import { DEFAULT_APP_CONTENT } from '@vital/shared';
 import { eq } from 'drizzle-orm';
 
 import { db } from '../client.js';
-import { biomarkerCategories, biomarkers, subscriptionPlans } from '../schema.js';
+import {
+  appSettings,
+  biomarkerCategories,
+  biomarkers,
+  healthGoals,
+  subscriptionPlans,
+} from '../schema.js';
+import { HEALTH_GOAL_SEED } from './goals.js';
 import { PLAN_SEED } from './plans.js';
 
 async function seedCategories() {
@@ -121,6 +129,43 @@ async function seedPlans() {
   }
 }
 
+async function seedGoals() {
+  for (const goal of HEALTH_GOAL_SEED) {
+    const [existing] = await db
+      .select({ id: healthGoals.id })
+      .from(healthGoals)
+      .where(eq(healthGoals.slug, goal.slug))
+      .limit(1);
+    const values = {
+      slug: goal.slug,
+      label: goal.label,
+      icon: goal.icon,
+      displayOrder: goal.display_order,
+      isActive: true,
+    };
+    if (existing) {
+      await db.update(healthGoals).set(values).where(eq(healthGoals.id, existing.id));
+    } else {
+      await db.insert(healthGoals).values(values);
+    }
+  }
+}
+
+async function seedContent() {
+  // Only set defaults for keys that don't exist yet (never clobber admin edits).
+  const entries: { key: string; value: unknown }[] = [
+    { key: 'welcome_tagline', value: DEFAULT_APP_CONTENT.welcome_tagline },
+    { key: 'support_email', value: DEFAULT_APP_CONTENT.support_email },
+    { key: 'lab_partner', value: DEFAULT_APP_CONTENT.lab_partner },
+  ];
+  for (const e of entries) {
+    await db
+      .insert(appSettings)
+      .values({ key: e.key, value: e.value, updatedAt: new Date() })
+      .onConflictDoNothing({ target: appSettings.key });
+  }
+}
+
 async function main() {
   console.log('Seeding categories…');
   const slugToId = await seedCategories();
@@ -133,6 +178,13 @@ async function main() {
   console.log('Seeding plans…');
   await seedPlans();
   console.log(`  ${PLAN_SEED.length} plans.`);
+
+  console.log('Seeding health goals…');
+  await seedGoals();
+  console.log(`  ${HEALTH_GOAL_SEED.length} goals.`);
+
+  console.log('Seeding app content defaults…');
+  await seedContent();
 
   console.log('Seed complete.');
   process.exit(0);
