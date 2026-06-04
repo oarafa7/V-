@@ -1,154 +1,234 @@
-# VITAL — Frontend Design Handoff
+# VITAL — Frontend Design Handoff (v2 · "Warm Paper" direction)
 
-A self-contained brief for designing the VITAL mobile interface. Everything a
-designer needs: the framework, design tokens, typography, screen inventory, and
-the component library with prop contracts. The app is **dark-mode only**,
-**mobile-first** (iOS + Android), built to run in **Expo Go**.
+> This **supersedes** the earlier dark/gold/serif direction. The new visual
+> language is derived from the **Function Health** reference screens: a warm,
+> light, editorial, data-forward aesthetic. Pair this doc with those reference
+> images when briefing the designer.
+
+The app stays the same product (same screens, flows, data, and API). What
+changes is the **look**: from dark luxe → **light "paper", bold type, and
+numbers-as-hero data viz.**
 
 > Brand line: **"Know your body. Before it fails you."**
-> Aesthetic: clinical, premium, calm. Deep near-black backgrounds, restrained
-> gold accent, serif display numerals, monospace labels. Think "private health
-> concierge," not "consumer fitness app."
+> Mood: a calm, premium **health journal** on warm paper. Big confident
+> typography, huge legible numbers, lots of whitespace, hairline dividers
+> instead of heavy cards. Clinical but human.
 
 ---
 
-## 1. Framework & libraries
+## 0. Adopt vs. exclude (scope guardrails)
 
-| Concern | Choice | Notes for design |
-|---|---|---|
-| App framework | **Expo (React Native)** | iOS + Android from one codebase |
-| Navigation | **Expo Router** (file-based) | Stacks + a 3-tab bottom bar |
-| Styling | **NativeWind** (Tailwind for RN) | Tokens map to Tailwind classes (below) |
-| Animation | **React Native Reanimated 3** | Pulse, progress, success checkmark, toasts |
-| Forms | **React Hook Form + Zod** | Inline field validation |
-| Charts | **react-native-svg** | Custom range bar + history line chart (Skia-free for Expo Go) |
-| Icons | **lucide-react-native** | Icon names referenced by string throughout |
-| Payments UI | **react-native-webview** | Paymob iframe rendered in a WebView |
+**Adopt the visual language from the references:**
+- Warm paper canvas, bold editorial type, generous whitespace
+- Count-bar hero, category proportional status bars, range-reference line chart
+- Inline status line (`● status · value unit`)
+- Outline line-icons, light bottom tab bar with a single accent
+
+**Do NOT build (these appear in the Function shots but are out of VITAL Phase 1 scope):**
+- ❌ Biological Age / any composite "health score" (Phase 2)
+- ❌ AI Clinician Notes / Chat / Protocols (Phase 2 AI)
+- ❌ MRI Scans / imaging (future phase)
+- VITAL's hero is a **count of statuses + "X of Y optimal"** — a count, *not* a score.
 
 ---
 
-## 2. Design tokens
+## 1. Framework & libraries (unchanged)
+
+| Concern | Choice |
+|---|---|
+| App framework | Expo (React Native), runs in Expo Go |
+| Navigation | Expo Router (file-based) — stacks + 3-tab bottom bar |
+| Styling | NativeWind (Tailwind for RN) |
+| Animation | React Native Reanimated 3 |
+| Forms | React Hook Form + Zod |
+| Charts | react-native-svg (custom range bar + line chart) |
+| Icons | lucide-react-native (use the **outline / thin-stroke** style) |
+| Payments UI | react-native-webview (Paymob iframe) |
+
+---
+
+## 2. Design tokens (NEW — light "Warm Paper")
 
 ### Colors
 
 ```
-obsidian     #090B0E   app background (deepest)
-deep         #0D1117   nav bars, bottom sheets, sticky bars
-surface      #131920   cards, inputs, tiles
-border       #1E2830   hairline borders / dividers
-borderLight  #243040   raised borders, toggles
-gold         #C9A84C   primary accent, CTAs, active state
-goldLight    #E8C878   accent highlight
-goldDim      #8A6E30   muted accent / background glow
-text         #D4DCE8   body text
-textDim      #7A8FA6   secondary text, labels
-textMuted    #3D5068   placeholders, disabled, "untested"
-white        #F0F4F8   high-emphasis headings/values
-red          #E05252   alert status
-green        #4CAF84   optimal status
-cyan         #4A9FB5   links / informational
+/* canvas & surfaces */
+canvas       #FBF6EC   app background — warm cream "paper"
+panelWarm    #F3EAD9   sectioned/inset background, subtle grouping
+card         #FFFFFF   raised cards (use sparingly — prefer dividers)
+panelSlate   #6E8BA0   accent feature panel (muted slate blue)
+line         #E7DECC   hairline dividers & borders
+
+/* ink (text) */
+ink          #20201C   primary text & headings (warm near-black)
+inkSoft      #6B6459   secondary / body-dim
+inkMuted     #A79E8D   tertiary, placeholders, captions
+
+/* status (data only — never used for interactive chrome) */
+green        #6FA97D   optimal / in range
+greenInk     #3E7A53   optimal big-number text emphasis
+amber        #CDA24E   suboptimal / review
+rust         #C2603C   alert / out of range
+untested     #B6AD9C   no result yet
+
+/* brand / interactive accent */
+accent       #C2603C   active tab, links, selected, accent marks (clay/terracotta)
+ink-button   #20201C   primary button fill (cream text on ink)
 ```
 
-### Status color system (used everywhere a biomarker appears)
+Notes:
+- **Cards are optional.** Function leans on the cream canvas + hairline dividers,
+  not boxed cards. Use `card`/shadow only for true elevation (the slate feature
+  panel, bottom sheets). Most lists are just rows + `line` dividers.
+- The accent (clay) is intentionally in the same family as `rust` (alert), as in
+  the reference. Status colors only appear in data contexts, so meaning stays
+  clear.
+- **Primary buttons are ink charcoal with cream text** (editorial, high contrast)
+  — not the accent.
 
-| Status | Meaning | Color | Label shown |
+### Status system (VITAL keeps 4 states; Function only had 3)
+
+| Status | VITAL meaning | Color | Inline label |
 |---|---|---|---|
-| `optimal` | within VITAL's functional-optimal window | `#4CAF84` green | "Optimal" |
-| `suboptimal` | within lab-normal but outside optimal | `#C9A84C` gold | "Review" |
-| `alert` | outside lab-normal entirely | `#E05252` red | "Alert" |
-| `untested` | no result yet | `#3D5068` muted | "Untested" |
-
-### Typography
-
-| Role | Font | Weight | Used for |
-|---|---|---|---|
-| Display | **Cormorant Garamond** (serif) | 300 | Big numbers, screen titles, biomarker names, values |
-| Label / code | **DM Mono** (monospace) | 300 | Category labels, stats, units, badges, section headers (UPPERCASE, wide tracking) |
-| Body | **Instrument Sans** (sans) | 400 | Descriptions, paragraphs, form text |
-
-Typical sizes in use: display 64 (logo) / 38–44 (values & titles) / 24–32 (headers); body 13–15; mono labels 9–12 (uppercase, letter-spacing wide).
-
-### Shape & spacing
-
-- Radius: `sm 2 · md 4 · lg 8` (cards/inputs use md–lg; pills are fully rounded)
-- Spacing scale: `4 · 8 · 12 · 16 · 24 · 32`
-- Screen horizontal padding: **20px**
-- Cards: `surface` fill, `border` 1px, radius 8, padding 16–20
+| `optimal` | within functional-optimal window | green `#6FA97D` | "Optimal" |
+| `suboptimal` | within lab-normal, outside optimal | amber `#CDA24E` | "Review" |
+| `alert` | outside lab-normal | rust `#C2603C` | "Alert" |
+| `untested` | no result | untested `#B6AD9C` | "Untested" |
 
 ---
 
-## 3. Screen inventory
+## 3. Typography (NEW — bold editorial sans)
 
-Grouped by flow. Each is a real route in the app.
+Out: Cormorant Garamond serif. In: a **bold humanist/grotesque sans** for
+headings and numbers, with a clean sans for body — matching Function's heavy,
+confident type.
+
+| Role | Font (Google Fonts) | Weight | Used for |
+|---|---|---|---|
+| Display / Heading / Numbers | **Bricolage Grotesque** | 600–800 | Screen titles, biomarker names, the big stat numbers |
+| Body / UI | **Inter** | 400–500 | Descriptions, paragraphs, labels, form text |
+| Optional accent serif | **Fraunces** (soft serif) | 500–600 | If a warmer numeral treatment is wanted on hero values |
+
+Scale in use:
+- Hero numbers (count-bar, big values): **64–96**, bold, status-colored
+- Screen titles / biomarker name: **30–40**, bold ink
+- Section headers (e.g. "Why it matters?"): **20–24** bold ink (sentence case, *not* uppercase mono anymore)
+- Body: **15–17**, line-height ~1.6
+- Captions / units / dates: **12–13** inkSoft/inkMuted
+
+> Big stylistic shift: drop the uppercase-mono label treatment from v1. The new
+> language uses **bold sentence-case headings** and lets size/weight create
+> hierarchy.
+
+---
+
+## 4. Data-visualization patterns (the core of this redesign)
+
+These are the patterns to design carefully — they are VITAL's data identity.
+
+### 4.1 Count-bar hero (Dashboard)
+Big colored numerals for each status, each with a **proportional bar** sized to
+its count. Reference: Function's "125 In Range / 16 Out of Range / 7 Other".
+
+- VITAL version: **Optimal (green) · Review (amber) · Alert (rust) · Untested (gray)**.
+- Each: a large bold number in its status color, a short label beneath, and a
+  block/bar whose height or width is proportional to the count.
+- Beneath, a quiet line: **"42 of 60 markers optimal"** (a count — not a score).
+
+### 4.2 Category list with proportional status bars (Biomarkers / "Data")
+Each category is a **full-width row**: outline icon · category name (bold ink) ·
+a horizontal **ratio bar** (green segment for optimal count, amber for review,
+rust for alert) with the counts printed at the segment ends. Hairline divider
+between rows. Reference: Function's "Male Health → ▬▬▬ 9 · ▬ 2".
+
+- Tap a row → category detail.
+- This replaces v1's text-only "4 optimal · 1 review" summary with a **visual bar**.
+
+### 4.3 Range-reference line chart (Biomarker detail)
+Reference: the ApoB chart. Compose it as:
+- A **vertical range band on the left edge** showing the reference zones —
+  green "in-range/optimal" band (labeled, e.g. `< 90` or the optimal window),
+  with red/rust zone(s) above/below.
+- A **line across test dates** (x-axis = May 24, Dec 24, …) with **status-colored
+  points** (green when optimal, amber/rust otherwise).
+- The **current value labeled** above its point (e.g. green "67").
+- A **dashed gray segment** to a hollow point = the projected/next test slot.
+- Keep gridlines minimal; let the band + points carry it.
+
+### 4.4 Inline status line (replaces the boxed badge)
+Under the biomarker title: **`● Optimal · 5.8 %`** — a colored dot, the status
+word in its color, a middot, then the bold value + unit in ink. Lighter and more
+editorial than v1's bordered pill. (A small pill may still be used in dense
+list rows.)
+
+### 4.5 Big-number value treatment
+Values are heroes: large, bold, colored by status where it aids meaning (the
+current reading), ink where neutral. Units are small inkSoft beside the number.
+
+### 4.6 Editorial long-form (explanatory sections)
+Reference: "Clinician Notes" layout. For "What this measures / Why it matters? /
+What affects this marker": bold sentence-case section header, then well-spaced
+body or bullets with comfortable line-height. Generous vertical rhythm.
+
+---
+
+## 5. Screen inventory (same screens, re-skinned)
 
 ### Onboarding `(auth)`
-1. **Welcome** — full-screen splash. Centered "VITAL" serif wordmark in gold, pulsing radial gold glow behind it, tagline, two stacked CTAs (Get Started / Sign In) pinned to bottom.
-2. **Sign Up** — full name, email, password, Egyptian phone (+20). Terms checkbox, "OR" divider, Google button, link to login.
-3. **Login** — email, password, "Forgot password?", Google button, link to signup.
-4. **Health Profile** — multi-step, **one question per screen**, thin gold progress bar at top. Steps: DOB (shows computed age), Sex (choice list), Height/Weight (shows computed BMI), Chronic conditions (multi-select), Family history (multi-select). Continue + Back buttons.
-5. **Goals** — 2-column card grid, each card an icon + label; select up to 3 (selected = gold tint + border). "n/3 selected" counter.
+1. **Welcome** — cream canvas, big bold "VITAL" wordmark in ink (Bricolage), tagline in inkSoft, **ink primary button** ("Get Started") + outline secondary ("Sign In"). Optional: a soft warm gradient or a single accent mark instead of the old dark glow.
+2. **Sign Up / 3. Login** — light forms: inkSoft labels, white/cream inputs with `line` borders, accent focus ring, ink primary button. Google = outline button.
+4. **Health Profile** — one-question-per-screen, thin **accent** progress bar on cream. Choice rows = cream rows with `line` borders; selected = accent border + faint accent tint. Shows computed age / BMI in accent or green.
+5. **Goals** — 2-col card grid; selected card = accent border + faint tint, icon turns accent.
 
 ### Subscription `subscription/`
-6. **Plans** — Annual / Monthly-equivalent toggle. Two `PlanCard`s (Basic, Premium). Premium is recommended: gold border + "Most Popular" badge. Below: a feature-by-feature **comparison table**. "Maybe later" link.
-7. **Checkout** — plan summary card with **subtotal → 14% VAT → total** breakdown, list of payment methods (Card, Vodafone Cash, Fawry, Meeza), terms checkbox, "Pay {total} EGP" button. Tapping Pay swaps the screen for a full-screen **Paymob WebView** with a Cancel header.
-8. **Confirmation** — animated green success checkmark (spring scale-in), "You're all set", subscription detail card (plan / tests-per-year / expiry), two CTAs (View Dashboard / Book First Test).
+6. **Plans** — light cards (or divider-separated blocks). Annual/Monthly toggle as a segmented control. Premium = accent border + "Most Popular" tag. Big bold prices (Bricolage). Comparison table with hairline rows. Primary CTA = ink button on Premium, outline on Basic.
+7. **Checkout** — order summary with subtotal → **14% VAT** → total (big bold total). Payment-method rows. Terms checkbox. "Pay {total} EGP" ink button → Paymob WebView (unchanged).
+8. **Confirmation** — animated green check, bold "You're all set", subscription detail rows, two CTAs.
 
-### Main app `(tabs)` — bottom tab bar (Dashboard · Biomarkers · Profile)
-9. **Dashboard** — "Welcome back, {name}". If no subscription: a subscribe prompt. Else: a hero card with a **ProgressRing** (% of tested markers that are optimal) + summary text, a subscription summary strip, and a horizontal row of category cards.
-10. **Biomarkers (library)** — title, horizontal **category overview cards** row, search bar, horizontal **category filter pills**, **status filter pills**, a sort control + grid/list toggle, then the biomarker list/grid. Has loading skeletons, empty state, and a subscription-locked state.
-11. **Profile** — avatar + name + email, health-profile summary rows, goals, subscription card, Sign Out.
+### Main app `(tabs)` — light bottom bar (Dashboard · Biomarkers · Profile), active item in **accent**, outline icons
+9. **Dashboard** — top bar (avatar · "VITAL" · search). **Count-bar hero (4.1)**. Subscription strip. Category preview (rows or cards).
+10. **Biomarkers** — title, **category list with proportional bars (4.2)**, search field, lightweight filter chips (category + status) and a sort/view control, then the biomarker list. Locked/subscribe state for non-subscribers.
+11. **Profile** — avatar, name, health-profile rows, goals, subscription, sign out — editorial rows on cream.
 
 ### Biomarker detail `biomarker/`
-12. **Biomarker Detail** — the richest screen, scrollable long-form:
-    - **Header**: category badge, large serif name, large value + unit, status badge, last-tested date
-    - **Range** section: a toggle (Lab Normal / Optimal) and a 5-zone `RangeBar` (red·gold·green·gold·red) with the user's value marker
-    - **History**: SVG line chart with a shaded green optimal band, tappable points with tooltip; single-point state shows "Test again to see your trend"
-    - **What this measures** (paragraph)
-    - **Why it matters** (bulleted)
-    - **What affects this marker** (paragraph)
-    - **Related biomarkers** (horizontal card scroll)
-    - **Sticky bottom bar**: "Book a Test" (secondary) + "Add Result" (primary)
-    - **Manual result bottom sheet**: value, test date, lab name, notes
-13. **Category Detail** — header (icon tile + name + count), a `ProgressRing` + description card, the category's biomarker list, a "Why this category matters" blurb, and a related-categories pill row.
+12. **Biomarker Detail** — back · bold title · **inline status line (4.4)** · gray description · **range-reference chart (4.3)** · range bar (optimal/normal toggle) · "What this measures" · "Why it matters?" (bullets) · "What affects this marker" · related biomarkers (horizontal) · sticky bottom actions (Book a Test outline · Add Result ink). Manual-entry bottom sheet on cream.
+13. **Category Detail** — outline icon + name + count, a **status summary (count bar)** + description, the category's biomarker list, "Why this category matters", related-category chips.
 
-The 8 categories (color-coded everywhere): Metabolic `#4CAF84`, Hormonal `#C9A84C`, Cardiovascular `#E05252`, Vitamins & Nutrients `#4A9FB5`, Inflammation `#E0844A`, Thyroid `#9B7FD4`, Liver & Kidney `#6B9E6B`, Complete Blood Count `#B55A7A`.
+8 categories keep their identity colors but rendered on the warm canvas:
+Metabolic, Hormonal, Cardiovascular, Vitamins & Nutrients, Inflammation,
+Thyroid, Liver & Kidney, Complete Blood Count.
 
 ---
 
-## 4. Component library (props = the design contract)
+## 6. Component library — what changes
 
-These are the reusable building blocks. Designing these well covers ~90% of the UI.
+Same component set; restyled for light/editorial. Key deltas:
 
-- **Button** — `variant: primary | secondary | ghost`, `loading`, `disabled`, `icon`. Primary = gold fill / obsidian text; secondary = surface fill / borderLight border; ghost = text only. Labels are UPPERCASE mono.
-- **StatusBadge** — `status`, `size: sm | md`. Pill with a colored dot + uppercase label, tinted background of the status color.
-- **BiomarkerCard** — `view: list | grid`. List: category dot + name + "value unit · date" + StatusBadge. Grid: dot + status dot top row, name, value at bottom. Supports search-term highlight (matched substring in gold).
-- **CategoryCard** — icon tile, name, "{n} markers", status summary ("4 optimal · 1 review"), **color-coded left border**. Fixed width ~160 for horizontal scroll.
-- **PlanCard** — plan name (mono), big serif price + "/year" or "/mo", feature list with green checks, "Choose Plan" button. `recommended` adds gold border + "Most Popular" badge.
-- **RangeBar** — horizontal 5-zone bar (red · gold · green · gold · red) with a white value marker; `mode: optimal | normal` switches which thresholds are emphasized; threshold labels beneath.
-- **HistoryChart** — line chart over time, shaded green optimal band, tappable points → tooltip. Empty + single-point states.
-- **ProgressRing** — circular ring (0–1), center shows % + a small sublabel ("optimal"). Color configurable per category.
-- **SectionHeader** — uppercase gold mono title, optional subtitle, optional right-aligned action link (cyan).
-- **BottomSheet** — slide-up panel over a dimmed backdrop, grab handle, optional title, scrollable body. Keyboard-aware.
-- **FormField** — uppercase mono label above a surface input; red border + red helper text on error.
-- **ProgressBar** — thin (4px) animated gold fill on a border track (onboarding).
-- **Skeleton / SkeletonList** — shimmering placeholders (border-colored, opacity pulse).
-- **EmptyState** — centered icon-in-circle, serif title, dim message, optional CTA. Used for no-results, no-subscription (lock icon), and errors.
-- **Toast** — top-of-screen slide-in notice; accent border by kind (error red / success green / info cyan).
-- **FilterPills** — horizontal scroll of single-select pills; active pill uses the accent color tint + border.
+- **Button** — primary = **ink fill / cream text**; secondary = outline (`line` border, ink text); ghost = accent text. Sentence-case or light-uppercase, not heavy tracking.
+- **StatusBadge → StatusLine** — prefer the **inline `● word · value`** form on detail/headers; keep a compact pill only for dense rows.
+- **BiomarkerRow** (list) — cream row, outline category dot/icon, bold ink name, inkSoft "value unit · date", inline status; hairline divider. (Replaces the boxed card as the default.)
+- **CategoryRow** (NEW primary) — outline icon · name · **proportional green/amber/rust ratio bar with counts**. (The card variant stays for horizontal dashboard scrollers.)
+- **CountBarHero** (NEW) — the 4-up big-number + proportional bar block for the dashboard.
+- **PlanCard** — light card, big bold price, green check features, ink/outline CTA, accent "Most Popular".
+- **RangeBar** — keep the 5-zone bar but on light: zones in green/amber/rust at lower saturation; marker = ink with cream ring.
+- **HistoryChart** — upgrade to the **range-reference style (4.3)**: left range band, status-colored points, current-value label, dashed projection.
+- **ProgressRing** — keep, but on cream with status/category color; thinner track in `line`.
+- **SectionHeader** — **bold sentence-case ink** (e.g. "Why it matters?"), drop the gold uppercase-mono style.
+- **BottomSheet / FormField / Skeleton / EmptyState / Toast / FilterPills** — recolor to the light palette; pills selected = faint accent tint + accent border.
 
 ---
 
-## 5. Interaction & state notes for design
+## 7. Direction summary for the designer
 
-- **Auth gate**: unauthenticated users only reach the `(auth)` flow.
-- **Subscription gate**: without an active subscription, the Biomarkers tab and Dashboard show a locked / subscribe-prompt state instead of data — design these "locked" states intentionally (they're a conversion surface).
-- **Animations present**: welcome glow pulse, onboarding progress bar, success checkmark spring, toast slide, skeleton shimmer, chart point selection.
-- **Everything is dark.** No light theme in Phase 1.
-- **Numbers are the hero.** Lean on the serif display font for values and titles; keep labels small, uppercase, monospaced, and dim.
+1. **Warm paper, not dark.** Cream canvas, ink text, hairline dividers, airy.
+2. **Numbers are the product.** Big, bold, status-colored. Charts are simple and
+   legible (range band + points), never decorative.
+3. **Editorial type.** Bold Bricolage Grotesque headings + Inter body. No
+   uppercase-mono labels.
+4. **One accent (clay), green/amber/rust for status.** Restraint.
+5. **Honor scope.** No biological age, AI notes, MRI, chat — adopt the *look*,
+   not those features.
 
----
-
-## 6. Out of scope (don't design these for Phase 1)
-
-AI coach, composite "health score", lab-results import, push notifications,
-enterprise dashboards, imaging, genetics, supplement store, social/sharing.
+Use the Function Health reference images for tone, density, and the three
+signature data visuals; use this doc for VITAL's screens, statuses, and
+structure.

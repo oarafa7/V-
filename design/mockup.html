@@ -3,81 +3,63 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>VITAL — Visual Reference (Phase 1)</title>
+<title>VITAL — Visual Reference (v2 · Warm Paper)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=DM+Mono:wght@300;400&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
   :root{
-    --obsidian:#090B0E; --deep:#0D1117; --surface:#131920; --border:#1E2830;
-    --borderLight:#243040; --gold:#C9A84C; --goldLight:#E8C878; --goldDim:#8A6E30;
-    --text:#D4DCE8; --textDim:#7A8FA6; --textMuted:#3D5068; --white:#F0F4F8;
-    --red:#E05252; --green:#4CAF84; --cyan:#4A9FB5; --orange:#E0844A; --purple:#9B7FD4;
-    --display:'Cormorant Garamond',serif; --mono:'DM Mono',monospace; --body:'Instrument Sans',sans-serif;
+    --canvas:#FBF6EC; --panelWarm:#F3EAD9; --card:#FFFFFF; --panelSlate:#6E8BA0;
+    --line:#E7DECC; --ink:#20201C; --inkSoft:#6B6459; --inkMuted:#A79E8D;
+    --green:#6FA97D; --greenInk:#3E7A53; --amber:#CDA24E; --rust:#C2603C; --untested:#B6AD9C;
+    --accent:#C2603C;
+    --disp:'Bricolage Grotesque',sans-serif; --body:'Inter',sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#05070a;color:var(--text);font-family:var(--body);padding:40px 24px 80px;-webkit-font-smoothing:antialiased}
+  body{background:#E8E0D2;color:var(--ink);font-family:var(--body);padding:40px 24px 80px;-webkit-font-smoothing:antialiased}
   .page-head{max-width:1200px;margin:0 auto 36px}
-  .page-head h1{font-family:var(--display);font-weight:400;font-size:48px;color:var(--white);letter-spacing:.08em}
-  .page-head p{color:var(--textDim);font-size:15px;margin-top:6px;max-width:680px;line-height:1.5}
-  .gold{color:var(--gold)}
-  .frames{display:flex;flex-wrap:wrap;gap:40px;justify-content:center;max-width:1400px;margin:0 auto}
+  .page-head h1{font-family:var(--disp);font-weight:800;font-size:44px;color:var(--ink);letter-spacing:-.01em}
+  .page-head p{color:var(--inkSoft);font-size:15px;margin-top:6px;max-width:720px;line-height:1.55}
+  .accent{color:var(--accent)}
+  .frames{display:flex;flex-wrap:wrap;gap:40px;justify-content:center;max-width:1500px;margin:0 auto}
   .col{display:flex;flex-direction:column;align-items:center;gap:14px}
-  .label{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--textDim)}
+  .label{font-family:var(--body);font-weight:600;font-size:12px;letter-spacing:.04em;color:var(--inkSoft)}
 
-  /* phone frame */
-  .phone{width:340px;height:720px;background:var(--obsidian);border-radius:42px;border:1px solid var(--border);
-    box-shadow:0 0 0 10px #0b0e12, 0 30px 80px rgba(0,0,0,.6);overflow:hidden;position:relative;display:flex;flex-direction:column}
-  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:130px;height:26px;background:#0b0e12;border-radius:0 0 16px 16px;z-index:30}
-  .screen{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative}
-  .pad{padding:0 20px}
+  .phone{width:340px;height:720px;background:var(--canvas);border-radius:42px;border:1px solid #d8cfbe;
+    box-shadow:0 0 0 10px #fff, 0 30px 80px rgba(60,50,30,.25);overflow:hidden;position:relative;display:flex;flex-direction:column}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:130px;height:26px;background:#1d1b16;border-radius:0 0 16px 16px;z-index:30}
+  .screen{flex:1;overflow:hidden;display:flex;flex-direction:column;position:relative;background:var(--canvas)}
+  .pad{padding:0 22px}
   .scroll{flex:1;overflow:hidden}
 
-  /* generic atoms */
-  .mono{font-family:var(--mono)}
-  .disp{font-family:var(--display);font-weight:400;color:var(--white)}
-  .uplabel{font-family:var(--mono);text-transform:uppercase;letter-spacing:.16em;font-size:10px;color:var(--gold)}
-  .card{background:var(--surface);border:1px solid var(--border);border-radius:8px}
-  .pill{font-family:var(--mono);font-size:11px;border-radius:999px;padding:7px 14px;border:1px solid var(--border);background:var(--surface);color:var(--textDim);white-space:nowrap}
-  .pill.active{color:var(--gold);border-color:var(--gold);background:rgba(201,168,76,.15)}
-  .btn{display:flex;align-items:center;justify-content:center;border-radius:6px;padding:13px;font-family:var(--mono);
-    text-transform:uppercase;letter-spacing:.1em;font-size:12px}
-  .btn-primary{background:var(--gold);color:var(--obsidian)}
-  .btn-secondary{background:var(--surface);border:1px solid var(--borderLight);color:var(--white)}
-  .badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);text-transform:uppercase;
-    letter-spacing:.08em;font-size:10px;padding:4px 9px;border-radius:3px;border:1px solid}
-  .dot{width:7px;height:7px;border-radius:50%}
+  .disp{font-family:var(--disp);font-weight:700;color:var(--ink)}
+  .h-title{font-family:var(--disp);font-weight:700;font-size:30px;color:var(--ink);letter-spacing:-.01em}
   .row{display:flex;align-items:center}
   .between{justify-content:space-between}
+  .divider{height:1px;background:var(--line)}
+  svg.ic{stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
-  /* status helpers */
-  .s-optimal{color:var(--green);border-color:var(--green);background:rgba(76,175,132,.1)}
-  .s-review{color:var(--gold);border-color:var(--gold);background:rgba(201,168,76,.1)}
-  .s-alert{color:var(--red);border-color:var(--red);background:rgba(224,82,82,.1)}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;border-radius:10px;padding:15px;font-weight:600;font-size:14px}
+  .btn-ink{background:var(--ink);color:var(--canvas)}
+  .btn-out{background:transparent;border:1.5px solid var(--line);color:var(--ink)}
+
+  .chip{font-size:12px;font-weight:500;border-radius:999px;padding:8px 14px;border:1px solid var(--line);background:transparent;color:var(--inkSoft);white-space:nowrap}
+  .chip.active{color:var(--accent);border-color:var(--accent);background:rgba(194,96,60,.08)}
+  .dot{width:8px;height:8px;border-radius:50%}
 
   /* tab bar */
-  .tabbar{height:64px;background:var(--deep);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-around}
-  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;color:var(--textMuted)}
-  .tab.active{color:var(--gold)}
-  .tab svg{width:20px;height:20px}
+  .tabbar{height:66px;background:var(--canvas);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-around}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:10px;font-weight:500;color:var(--inkMuted)}
+  .tab.active{color:var(--accent)}
+  .tab svg{width:21px;height:21px}
 
-  /* welcome glow */
-  .glow{position:absolute;top:14%;left:50%;transform:translateX(-50%);width:300px;height:300px;border-radius:50%;
-    background:var(--goldDim);filter:blur(50px);opacity:.45}
-
-  /* range bar */
-  .rangebar{height:12px;border-radius:3px;overflow:hidden;display:flex;position:relative}
-  .rangebar i{height:100%}
-  .marker{position:absolute;top:-3px;width:14px;height:18px;border-radius:3px;background:var(--white);border:2px solid var(--obsidian)}
-
-  .divider{height:1px;background:var(--border)}
-  svg.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2}
+  .statusline{display:flex;align-items:center;gap:8px;font-weight:600;font-size:18px}
 </style>
 </head>
 <body>
   <div class="page-head">
-    <h1>VITAL <span style="font-size:22px;color:var(--textDim);letter-spacing:0">· Visual Reference</span></h1>
-    <p>High-fidelity reference for the Phase 1 interface using the real design tokens. Four key screens. Hand this alongside <span class="gold">DESIGN_HANDOFF.md</span> to the designer — it's directional, not pixel-final.</p>
+    <h1>VITAL <span style="font-weight:500;font-size:20px;color:var(--inkSoft);letter-spacing:0">· Visual Reference v2 — Warm Paper</span></h1>
+    <p>Redesigned around the Function Health references: light cream canvas, bold editorial type, and numbers-as-hero data viz. Directional, not pixel-final — pair with <span class="accent">DESIGN_HANDOFF.md</span> and the reference images for Claude design.</p>
   </div>
 
   <div class="frames">
@@ -85,230 +67,228 @@
     <!-- ===================== WELCOME ===================== -->
     <div class="col">
       <div class="phone"><div class="notch"></div><div class="screen">
-        <div class="glow"></div>
+        <div style="position:absolute;top:16%;left:50%;transform:translateX(-50%);width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(194,96,60,.14),transparent 70%)"></div>
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 32px;position:relative">
-          <div class="disp" style="font-size:62px;letter-spacing:.14em;color:var(--gold)">VITAL</div>
-          <div style="text-align:center;margin-top:18px;font-size:18px;line-height:1.5;color:var(--text)">Know your body.<br/>Before it fails you.</div>
+          <div class="disp" style="font-weight:800;font-size:58px;letter-spacing:-.02em;color:var(--ink)">VITAL</div>
+          <div style="text-align:center;margin-top:16px;font-size:18px;line-height:1.5;color:var(--inkSoft)">Know your body.<br/>Before it fails you.</div>
         </div>
-        <div class="pad" style="padding-bottom:34px;display:flex;flex-direction:column;gap:12px;position:relative">
-          <div class="btn btn-primary">Get Started</div>
-          <div class="btn btn-secondary">Sign In</div>
+        <div class="pad" style="padding-bottom:36px;display:flex;flex-direction:column;gap:12px;position:relative">
+          <div class="btn btn-ink">Get Started</div>
+          <div class="btn btn-out">Sign In</div>
         </div>
       </div></div>
       <div class="label">Welcome</div>
     </div>
 
-    <!-- ===================== PLANS ===================== -->
+    <!-- ===================== DASHBOARD (count-bar hero) ===================== -->
     <div class="col">
       <div class="phone"><div class="notch"></div><div class="screen">
-        <div class="scroll pad" style="padding-top:60px">
-          <div class="disp" style="font-size:30px">Choose your plan</div>
-          <div style="color:var(--textDim);font-size:13px;margin-top:4px">Comprehensive testing, optimal ranges.</div>
-
-          <!-- billing toggle -->
-          <div class="card" style="display:flex;padding:4px;margin:18px 0">
-            <div style="flex:1;text-align:center;padding:8px;border-radius:3px;background:var(--borderLight)" class="mono uplabel" >Annual</div>
-            <div style="flex:1;text-align:center;padding:8px" class="mono" style="font-size:10px;color:var(--textDim);text-transform:uppercase;letter-spacing:.16em">Monthly</div>
+        <div class="scroll">
+          <div class="pad row between" style="padding-top:52px;padding-bottom:6px">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--panelWarm);border:1px solid var(--line)"></div>
+            <div class="disp" style="font-size:22px">VITAL</div>
+            <svg class="ic" style="color:var(--ink);width:22px;height:22px" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
           </div>
 
-          <!-- premium card -->
-          <div class="card" style="padding:18px;border:2px solid var(--gold);position:relative;margin-bottom:14px">
-            <div style="position:absolute;top:-11px;right:16px;background:var(--gold);color:var(--obsidian);font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.1em;padding:4px 10px;border-radius:3px">Most Popular</div>
-            <div class="uplabel">premium</div>
-            <div style="display:flex;align-items:flex-end;gap:6px;margin-top:6px">
-              <div class="disp" style="font-size:38px">9,999</div>
-              <div class="mono" style="font-size:11px;color:var(--textDim);margin-bottom:8px">EGP / year</div>
+          <!-- count bar hero -->
+          <div class="pad" style="margin-top:18px">
+            <div style="display:flex;align-items:flex-end;gap:14px;height:210px">
+              <div style="flex:1.6;display:flex;flex-direction:column;justify-content:flex-end;height:100%">
+                <div class="disp" style="font-weight:800;font-size:44px;color:var(--greenInk);line-height:1">42</div>
+                <div style="font-size:13px;color:var(--inkSoft);margin:2px 0 8px">Optimal</div>
+                <div style="background:var(--green);border-radius:12px;height:130px"></div>
+              </div>
+              <div style="flex:1.1;display:flex;flex-direction:column;justify-content:flex-end;height:100%">
+                <div class="disp" style="font-weight:800;font-size:36px;color:var(--amber);line-height:1">11</div>
+                <div style="font-size:12px;color:var(--inkSoft);margin:2px 0 8px">Review</div>
+                <div style="background:var(--amber);border-radius:12px;height:64px"></div>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%">
+                <div class="disp" style="font-weight:800;font-size:32px;color:var(--rust);line-height:1">7</div>
+                <div style="font-size:12px;color:var(--inkSoft);margin:2px 0 8px">Alert</div>
+                <div style="background:var(--rust);border-radius:12px;height:40px"></div>
+              </div>
             </div>
-            <div class="divider" style="margin:14px 0"></div>
-            <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
-              <div class="row" style="gap:8px"><svg class="ic" style="stroke:var(--green)" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>2 tests per year</div>
-              <div class="row" style="gap:8px"><svg class="ic" style="stroke:var(--green)" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>80+ biomarkers</div>
-              <div class="row" style="gap:8px"><svg class="ic" style="stroke:var(--green)" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Optimal vs normal ranges</div>
-            </div>
-            <div class="btn btn-primary" style="margin-top:16px">Choose Plan</div>
+            <div style="font-size:14px;color:var(--inkSoft);margin-top:14px">42 of 60 markers <span style="color:var(--ink);font-weight:600">optimal</span></div>
           </div>
 
-          <!-- basic card -->
-          <div class="card" style="padding:18px">
-            <div class="uplabel">basic</div>
-            <div style="display:flex;align-items:flex-end;gap:6px;margin-top:6px">
-              <div class="disp" style="font-size:38px">5,999</div>
-              <div class="mono" style="font-size:11px;color:var(--textDim);margin-bottom:8px">EGP / year</div>
+          <div class="pad" style="margin-top:18px">
+            <div style="background:var(--panelSlate);border-radius:16px;padding:18px 18px;color:#fff">
+              <div style="font-size:12px;opacity:.85;font-weight:600">PREMIUM PLAN</div>
+              <div style="font-size:14px;margin-top:4px;opacity:.95">2 tests / year · renews 12 Mar 2027</div>
             </div>
-            <div class="btn btn-secondary" style="margin-top:14px">Choose Plan</div>
+          </div>
+
+          <div class="pad" style="margin-top:20px">
+            <div class="disp" style="font-size:18px;margin-bottom:6px">Categories</div>
+          </div>
+          <div class="pad divider"></div>
+          <div class="pad row between" style="padding-top:12px;padding-bottom:12px">
+            <div class="row" style="gap:12px"><svg class="ic" style="color:var(--ink);width:20px;height:20px" viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M12 22c4 0 7-3 7-7 0-4-7-13-7-13S5 11 5 15c0 4 3 7 7 7z"/></svg><span style="font-weight:600">Metabolic</span></div>
+            <div class="row" style="gap:6px"><div style="width:54px;height:8px;border-radius:4px;background:var(--green)"></div><span style="font-size:12px;color:var(--inkSoft)">11</span></div>
+          </div>
+          <div class="pad divider"></div>
+          <div class="pad row between" style="padding-top:12px;padding-bottom:12px">
+            <div class="row" style="gap:12px"><svg class="ic" style="color:var(--ink);width:20px;height:20px" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.5 3-6a4 4 0 0 0-7-2.7A4 4 0 0 0 8 8c0 2.5 1.5 4.5 3 6l4 4z"/></svg><span style="font-weight:600">Cardiovascular</span></div>
+            <div class="row" style="gap:6px"><div style="width:36px;height:8px;border-radius:4px;background:var(--green)"></div><div style="width:12px;height:8px;border-radius:4px;background:var(--rust)"></div><span style="font-size:12px;color:var(--inkSoft)">5·1</span></div>
           </div>
         </div>
+        <div class="tabbar">
+          <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Home</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="14"/></svg>Biomarkers</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Profile</div>
+        </div>
       </div></div>
-      <div class="label">Subscription · Plans</div>
+      <div class="label">Dashboard · count-bar hero</div>
     </div>
 
-    <!-- ===================== BIOMARKER LIBRARY ===================== -->
+    <!-- ===================== BIOMARKERS / DATA (category bars) ===================== -->
     <div class="col">
       <div class="phone"><div class="notch"></div><div class="screen">
-        <div class="scroll" style="padding-top:54px">
-          <div class="pad disp" style="font-size:30px">Biomarkers</div>
-
-          <!-- category cards -->
-          <div class="pad uplabel" style="margin:16px 0 10px">Categories</div>
-          <div style="display:flex;gap:12px;overflow:hidden;padding:0 20px">
-            <div class="card" style="width:150px;padding:14px;border-left:3px solid var(--green);flex:none">
-              <div style="width:34px;height:34px;border-radius:6px;background:rgba(76,175,132,.12);display:flex;align-items:center;justify-content:center;margin-bottom:10px">
-                <svg class="ic" style="stroke:var(--green);width:18px;height:18px" viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M12 22c4 0 7-3 7-7 0-4-7-13-7-13S5 11 5 15c0 4 3 7 7 7z"/></svg>
-              </div>
-              <div class="disp" style="font-size:17px">Metabolic</div>
-              <div class="mono" style="font-size:10px;color:var(--textDim);margin-top:2px">13 markers</div>
-              <div class="mono" style="font-size:10px;color:var(--textDim);margin-top:8px">8 optimal · 2 review</div>
-            </div>
-            <div class="card" style="width:150px;padding:14px;border-left:3px solid var(--red);flex:none">
-              <div style="width:34px;height:34px;border-radius:6px;background:rgba(224,82,82,.12);display:flex;align-items:center;justify-content:center;margin-bottom:10px">
-                <svg class="ic" style="stroke:var(--red);width:18px;height:18px" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.5 3-6a4 4 0 0 0-7-2.7A4 4 0 0 0 8 8c0 2.5 1.5 4.5 3 6l4 4z"/></svg>
-              </div>
-              <div class="disp" style="font-size:17px">Cardiovascular</div>
-              <div class="mono" style="font-size:10px;color:var(--textDim);margin-top:2px">8 markers</div>
-              <div class="mono" style="font-size:10px;color:var(--textDim);margin-top:8px">5 optimal · 1 review</div>
-            </div>
-          </div>
+        <div class="scroll">
+          <div class="pad h-title" style="padding-top:54px">Biomarkers</div>
 
           <!-- search -->
-          <div class="pad" style="margin-top:18px">
-            <div class="card row" style="padding:11px 12px;gap:8px">
-              <svg class="ic" style="stroke:var(--textDim)" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
-              <span style="color:var(--textMuted);font-size:14px">Search name, description, tags</span>
+          <div class="pad" style="margin-top:14px">
+            <div class="row" style="gap:10px;background:var(--panelWarm);border:1px solid var(--line);border-radius:12px;padding:12px 14px">
+              <svg class="ic" style="color:var(--inkMuted);width:18px;height:18px" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+              <span style="color:var(--inkMuted);font-size:14px">Search markers, tags…</span>
             </div>
+          </div>
+          <div style="display:flex;gap:8px;padding:14px 22px 4px;overflow:hidden">
+            <div class="chip active">All</div><div class="chip">Optimal</div><div class="chip">Review</div><div class="chip">Alert</div>
           </div>
 
-          <!-- pills -->
-          <div style="display:flex;gap:8px;padding:14px 20px 0;overflow:hidden">
-            <div class="pill active">All</div><div class="pill">Metabolic</div><div class="pill">Hormonal</div>
-          </div>
-          <div style="display:flex;gap:8px;padding:10px 20px 0;overflow:hidden">
-            <div class="pill active">All</div>
-            <div class="pill" style="color:var(--green);border-color:rgba(76,175,132,.4)">Optimal</div>
-            <div class="pill" style="color:var(--gold)">Review</div>
-          </div>
-
-          <!-- list -->
-          <div class="pad" style="margin-top:16px;display:flex;flex-direction:column;gap:8px">
-            <div class="card row between" style="padding:14px">
-              <div class="row" style="gap:12px">
-                <div class="dot" style="background:var(--green)"></div>
-                <div>
-                  <div class="disp" style="font-size:18px">Fasting Glucose</div>
-                  <div class="mono" style="font-size:11px;color:var(--textDim);margin-top:2px">88 mg/dL · 12 Mar 2026</div>
+          <!-- category list with proportional bars -->
+          <div style="margin-top:10px">
+            <!-- row -->
+            <div class="pad divider"></div>
+            <div class="pad" style="padding-top:14px;padding-bottom:14px">
+              <div class="row" style="gap:14px">
+                <svg class="ic" style="color:var(--ink);width:24px;height:24px" viewBox="0 0 24 24"><path d="M8 2v4M16 2v4M12 22c4 0 7-3 7-7 0-4-7-13-7-13S5 11 5 15c0 4 3 7 7 7z"/></svg>
+                <div style="flex:1">
+                  <div style="font-weight:600;font-size:17px">Metabolic Health</div>
+                  <div class="row" style="gap:8px;margin-top:8px">
+                    <div style="height:9px;border-radius:5px;background:var(--green);width:120px"></div><span style="font-size:12px;color:var(--inkSoft)">11</span>
+                    <div style="height:9px;border-radius:5px;background:var(--amber);width:22px"></div><span style="font-size:12px;color:var(--inkSoft)">2</span>
+                  </div>
                 </div>
               </div>
-              <div class="badge s-optimal"><span class="dot" style="background:var(--green)"></span>Optimal</div>
             </div>
-            <div class="card row between" style="padding:14px">
-              <div class="row" style="gap:12px">
-                <div class="dot" style="background:var(--green)"></div>
-                <div>
-                  <div class="disp" style="font-size:18px">HbA1c</div>
-                  <div class="mono" style="font-size:11px;color:var(--textDim);margin-top:2px">5.8 % · 12 Mar 2026</div>
+            <div class="pad divider"></div>
+            <div class="pad" style="padding-top:14px;padding-bottom:14px">
+              <div class="row" style="gap:14px">
+                <svg class="ic" style="color:var(--ink);width:24px;height:24px" viewBox="0 0 24 24"><path d="M19 14c1.5-1.5 3-3.5 3-6a4 4 0 0 0-7-2.7A4 4 0 0 0 8 8c0 2.5 1.5 4.5 3 6l4 4z"/></svg>
+                <div style="flex:1">
+                  <div style="font-weight:600;font-size:17px">Cardiovascular</div>
+                  <div class="row" style="gap:8px;margin-top:8px">
+                    <div style="height:9px;border-radius:5px;background:var(--green);width:70px"></div><span style="font-size:12px;color:var(--inkSoft)">5</span>
+                    <div style="height:9px;border-radius:5px;background:var(--rust);width:16px"></div><span style="font-size:12px;color:var(--inkSoft)">1</span>
+                  </div>
                 </div>
               </div>
-              <div class="badge s-review"><span class="dot" style="background:var(--gold)"></span>Review</div>
             </div>
-            <div class="card row between" style="padding:14px">
-              <div class="row" style="gap:12px">
-                <div class="dot" style="background:var(--red)"></div>
-                <div>
-                  <div class="disp" style="font-size:18px">ApoB</div>
-                  <div class="mono" style="font-size:11px;color:var(--textDim);margin-top:2px">112 mg/dL · 12 Mar 2026</div>
+            <div class="pad divider"></div>
+            <div class="pad" style="padding-top:14px;padding-bottom:14px">
+              <div class="row" style="gap:14px">
+                <svg class="ic" style="color:var(--ink);width:24px;height:24px" viewBox="0 0 24 24"><path d="M3 12h4l2 8 4-16 2 8h4"/></svg>
+                <div style="flex:1">
+                  <div style="font-weight:600;font-size:17px">Vitamins &amp; Nutrients</div>
+                  <div class="row" style="gap:8px;margin-top:8px">
+                    <div style="height:9px;border-radius:5px;background:var(--green);width:150px"></div><span style="font-size:12px;color:var(--inkSoft)">14</span>
+                  </div>
                 </div>
               </div>
-              <div class="badge s-alert"><span class="dot" style="background:var(--red)"></span>Alert</div>
+            </div>
+            <div class="pad divider"></div>
+            <div class="pad" style="padding-top:14px;padding-bottom:14px">
+              <div class="row" style="gap:14px">
+                <svg class="ic" style="color:var(--ink);width:24px;height:24px" viewBox="0 0 24 24"><path d="M9 3h6v5l3 8a3 3 0 0 1-3 4H9a3 3 0 0 1-3-4l3-8z"/></svg>
+                <div style="flex:1">
+                  <div style="font-weight:600;font-size:17px">Thyroid Function</div>
+                  <div class="row" style="gap:8px;margin-top:8px">
+                    <div style="height:9px;border-radius:5px;background:var(--green);width:48px"></div><span style="font-size:12px;color:var(--inkSoft)">4</span>
+                    <div style="height:9px;border-radius:5px;background:var(--amber);width:22px"></div><span style="font-size:12px;color:var(--inkSoft)">2</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
         <div class="tabbar">
-          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>Dashboard</div>
-          <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2v6l-5 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-9V2"/><line x1="8" y1="2" x2="16" y2="2"/></svg>Biomarkers</div>
-          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Profile</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>Home</div>
+          <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="14"/></svg>Biomarkers</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>Profile</div>
         </div>
       </div></div>
-      <div class="label">Biomarker Library</div>
+      <div class="label">Biomarkers · category bars</div>
     </div>
 
-    <!-- ===================== BIOMARKER DETAIL ===================== -->
+    <!-- ===================== BIOMARKER DETAIL (range-reference chart) ===================== -->
     <div class="col">
       <div class="phone"><div class="notch"></div><div class="screen">
-        <div class="scroll" style="padding-top:54px">
-          <div class="pad">
-            <svg class="ic" style="stroke:var(--white);width:22px;height:22px" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-
-            <!-- header -->
-            <div style="display:inline-block;background:rgba(76,175,132,.15);border-radius:3px;padding:4px 8px;margin-top:10px" class="mono uplabel" >Metabolic Health</div>
-            <div class="disp" style="font-size:36px;margin-top:8px">HbA1c</div>
-            <div class="row between" style="align-items:flex-end;margin-top:8px">
-              <div>
-                <div class="disp" style="font-size:42px">5.8<span class="mono" style="font-size:15px;color:var(--textDim)"> %</span></div>
-                <div class="mono" style="font-size:11px;color:var(--textMuted);margin-top:2px">Last tested 12 Mar 2026</div>
-              </div>
-              <div class="badge s-review"><span class="dot" style="background:var(--gold)"></span>Review</div>
+        <div class="scroll">
+          <div class="pad row between" style="padding-top:52px">
+            <svg class="ic" style="color:var(--ink);width:24px;height:24px" viewBox="0 0 24 24"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            <div class="row" style="gap:18px;color:var(--inkSoft)">
+              <svg class="ic" style="width:20px;height:20px" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+              <svg class="ic" style="width:20px;height:20px" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
             </div>
           </div>
 
-          <!-- range -->
-          <div class="pad" style="margin-top:24px">
-            <div class="row between" style="margin-bottom:10px">
-              <div class="uplabel">Range</div>
-              <div class="card" style="display:flex;padding:3px">
-                <div class="mono" style="font-size:10px;color:var(--textDim);padding:5px 11px">Lab Normal</div>
-                <div class="mono" style="font-size:10px;color:var(--white);padding:5px 11px;background:var(--borderLight);border-radius:3px">Optimal</div>
-              </div>
+          <div class="pad" style="margin-top:14px">
+            <div class="disp" style="font-weight:700;font-size:34px;letter-spacing:-.01em">HbA1c</div>
+            <div class="statusline" style="margin-top:10px;color:var(--amber)">
+              <span class="dot" style="background:var(--amber)"></span>Review
+              <span style="color:var(--inkMuted);font-weight:400">·</span>
+              <span style="color:var(--ink)">5.8 <span style="color:var(--inkSoft);font-weight:500;font-size:14px">%</span></span>
             </div>
-            <div class="card" style="padding:16px">
-              <div class="rangebar">
-                <i style="width:18%;background:var(--red)"></i>
-                <i style="width:20%;background:var(--gold);opacity:.85"></i>
-                <i style="width:24%;background:var(--green)"></i>
-                <i style="width:20%;background:var(--gold);opacity:.85"></i>
-                <i style="width:18%;background:var(--red)"></i>
-                <div class="marker" style="left:64%"></div>
-              </div>
-              <div class="row between" style="margin-top:8px">
-                <div class="mono" style="font-size:10px;color:var(--textDim)">4.8</div>
-                <div class="mono" style="font-size:10px;color:var(--textDim)">Optimal (%)</div>
-                <div class="mono" style="font-size:10px;color:var(--textDim)">5.4</div>
-              </div>
-              <div style="font-size:13px;color:var(--gold);margin-top:12px">Your value is in the review range.</div>
-            </div>
+            <div style="font-size:15px;line-height:1.55;color:var(--inkSoft);margin-top:14px">Reflects your average blood sugar over the past 2–3 months — a stable, long-term view of glucose control that doesn't swing with your last meal.</div>
           </div>
 
-          <!-- history chart -->
-          <div class="pad" style="margin-top:24px">
-            <div class="uplabel" style="margin-bottom:10px">History</div>
-            <div class="card" style="padding:16px">
-              <svg viewBox="0 0 280 150" style="width:100%;height:150px">
-                <rect x="36" y="58" width="232" height="34" fill="var(--green)" opacity="0.12"/>
-                <line x1="36" y1="58" x2="268" y2="58" stroke="var(--green)" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>
-                <line x1="36" y1="92" x2="268" y2="92" stroke="var(--green)" stroke-width="1" stroke-dasharray="3 3" opacity="0.5"/>
-                <polyline points="50,40 120,70 190,82 250,52" fill="none" stroke="var(--gold)" stroke-width="2"/>
-                <circle cx="50" cy="40" r="4" fill="var(--gold)" stroke="var(--obsidian)" stroke-width="2"/>
-                <circle cx="120" cy="70" r="4" fill="var(--gold)" stroke="var(--obsidian)" stroke-width="2"/>
-                <circle cx="190" cy="82" r="4" fill="var(--gold)" stroke="var(--obsidian)" stroke-width="2"/>
-                <circle cx="250" cy="52" r="6" fill="var(--gold)" stroke="var(--obsidian)" stroke-width="2"/>
-              </svg>
+          <!-- range reference chart -->
+          <div class="pad" style="margin-top:22px">
+            <svg viewBox="0 0 300 175" style="width:100%;height:180px">
+              <!-- left range band -->
+              <rect x="10" y="14" width="10" height="40" rx="3" fill="var(--rust)" opacity="0.85"/>
+              <rect x="10" y="58" width="10" height="96" rx="3" fill="var(--green)"/>
+              <text x="28" y="78" font-family="Inter" font-size="11" fill="var(--inkSoft)">Optimal</text>
+              <text x="28" y="93" font-family="Inter" font-size="11" fill="var(--inkSoft)">&lt; 5.4</text>
+              <!-- gridline baseline -->
+              <line x1="60" y1="154" x2="290" y2="154" stroke="var(--line)"/>
+              <!-- line + points -->
+              <polyline points="80,60 150,78 215,96" fill="none" stroke="#C9BFA8" stroke-width="2.5"/>
+              <line x1="215" y1="96" x2="278" y2="104" stroke="#CFC6B2" stroke-width="2.5" stroke-dasharray="4 4"/>
+              <circle cx="80" cy="60" r="5" fill="var(--green)"/>
+              <circle cx="150" cy="78" r="5" fill="var(--green)"/>
+              <circle cx="215" cy="96" r="6" fill="var(--canvas)" stroke="var(--amber)" stroke-width="3"/>
+              <circle cx="278" cy="104" r="5" fill="#D8CFBC"/>
+              <text x="207" y="84" font-family="Bricolage Grotesque" font-weight="700" font-size="14" fill="var(--amber)">5.8</text>
+              <!-- x labels -->
+              <text x="68" y="170" font-family="Inter" font-size="10" fill="var(--inkMuted)">May 24</text>
+              <text x="138" y="170" font-family="Inter" font-size="10" fill="var(--inkMuted)">Dec 24</text>
+              <text x="205" y="170" font-family="Inter" font-size="10" fill="var(--inkMuted)">Jun 25</text>
+              <text x="262" y="170" font-family="Inter" font-size="10" fill="var(--inkMuted)">Next</text>
+            </svg>
+          </div>
+
+          <div class="pad divider" style="margin-top:8px"></div>
+          <div class="pad" style="margin-top:18px">
+            <div class="disp" style="font-size:21px">Why it matters?</div>
+            <div style="font-size:15px;line-height:1.6;color:var(--inkSoft);margin-top:10px">
+              Elevated HbA1c is associated with prediabetes and type-2 diabetes risk. Keeping it in the optimal band reflects steady, well-controlled metabolic health.
             </div>
           </div>
-
-          <!-- what it measures -->
-          <div class="pad" style="margin-top:24px">
-            <div class="uplabel" style="margin-bottom:8px">What this measures</div>
-            <div style="font-size:14px;line-height:1.6;color:var(--text)">HbA1c reflects your average blood sugar over the past 2–3 months. It's a stable, long-term view of glucose control that doesn't swing with your last meal.</div>
-          </div>
-
-          <div style="height:90px"></div>
+          <div style="height:96px"></div>
         </div>
 
-        <!-- sticky action bar -->
-        <div style="background:var(--deep);border-top:1px solid var(--border);padding:12px 20px 28px;display:flex;gap:10px">
-          <div class="btn btn-secondary" style="flex:1;gap:6px"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Book a Test</div>
-          <div class="btn btn-primary" style="flex:1;gap:6px"><svg class="ic" style="stroke:var(--obsidian)" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Result</div>
+        <!-- sticky actions -->
+        <div style="border-top:1px solid var(--line);background:var(--canvas);padding:12px 20px 28px;display:flex;gap:10px">
+          <div class="btn btn-out" style="flex:1;padding:13px"><svg class="ic" style="width:16px;height:16px" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Book a Test</div>
+          <div class="btn btn-ink" style="flex:1;padding:13px"><svg class="ic" style="width:16px;height:16px;color:var(--canvas)" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add Result</div>
         </div>
       </div></div>
-      <div class="label">Biomarker Detail</div>
+      <div class="label">Biomarker Detail · range chart</div>
     </div>
 
   </div>
