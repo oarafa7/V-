@@ -140,3 +140,102 @@ export function plausibleResultSchema(min: number, max: number) {
       .max(max, `Value seems too high (max ${max})`),
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Admin
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const adminUpdateUserSchema = z.object({
+  full_name: z.string().min(2).max(120).optional(),
+  phone: z.string().max(20).optional(),
+  role: z.enum(['user', 'admin']).optional(),
+});
+export type AdminUpdateUserInput = z.infer<typeof adminUpdateUserSchema>;
+
+/** Admin entering a single result for a user (no plausibility hard-block). */
+export const adminCreateResultSchema = z.object({
+  biomarker_id: z.string().uuid(),
+  value: z.number().finite(),
+  tested_at: isoDateSchema,
+  lab_name: z.string().max(120).optional(),
+  notes: z.string().max(1000).optional(),
+});
+export type AdminCreateResultInput = z.infer<typeof adminCreateResultSchema>;
+
+/** Confirm (and optionally edit) the rows parsed from a lab PDF. */
+export const confirmLabUploadSchema = z.object({
+  tested_at: isoDateSchema,
+  lab_name: z.string().max(120).optional(),
+  rows: z
+    .array(
+      z.object({
+        biomarker_id: z.string().uuid(),
+        value: z.number().finite(),
+        include: z.boolean(),
+      }),
+    )
+    .min(1, 'Select at least one result to import'),
+});
+export type ConfirmLabUploadInput = z.infer<typeof confirmLabUploadSchema>;
+
+// Plans CRUD
+export const planInputSchema = z.object({
+  name: z.enum(['basic', 'premium']),
+  price_egp: z.number().int().min(0),
+  price_display: z.string().min(1).max(80),
+  annual_tests_count: z.number().int().min(0),
+  biomarker_count: z.number().int().min(0),
+  features: z.array(z.string().max(200)).max(20),
+  is_active: z.boolean().optional().default(true),
+});
+export type PlanInput = z.infer<typeof planInputSchema>;
+export const planUpdateSchema = planInputSchema.partial();
+export type PlanUpdateInput = z.infer<typeof planUpdateSchema>;
+
+// Category CRUD
+export const categoryInputSchema = z.object({
+  name: z.string().min(1).max(80),
+  slug: z.string().regex(/^[a-z0-9-]+$/, 'lowercase, digits, and dashes only'),
+  description: z.string().max(600).optional().default(''),
+  icon: z.string().max(40).optional().default(''),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Use a hex color like #4CAF84'),
+  display_order: z.number().int().min(0).optional().default(0),
+});
+export type CategoryInput = z.infer<typeof categoryInputSchema>;
+export const categoryUpdateSchema = categoryInputSchema.partial();
+export type CategoryUpdateInput = z.infer<typeof categoryUpdateSchema>;
+
+// Biomarker CRUD
+const rangeNumber = z.number().finite();
+export const biomarkerInputSchema = z
+  .object({
+    category_id: z.string().uuid(),
+    name: z.string().min(1).max(120),
+    slug: z.string().regex(/^[a-z0-9-]+$/),
+    unit: z.string().min(1).max(40),
+    description: z.string().max(2000).optional().default(''),
+    why_it_matters: z.string().max(2000).optional().default(''),
+    what_affects_it: z.string().max(2000).optional().default(''),
+    optimal_low: rangeNumber,
+    optimal_high: rangeNumber,
+    normal_low: rangeNumber,
+    normal_high: rangeNumber,
+    min_plausible: rangeNumber,
+    max_plausible: rangeNumber,
+    is_active: z.boolean().optional().default(true),
+    display_order: z.number().int().min(0).optional().default(0),
+    tags: z.array(z.string().max(40)).max(12).optional().default([]),
+  })
+  .refine(
+    (b) =>
+      b.min_plausible <= b.normal_low &&
+      b.normal_low <= b.optimal_low &&
+      b.optimal_low <= b.optimal_high &&
+      b.optimal_high <= b.normal_high &&
+      b.normal_high <= b.max_plausible,
+    {
+      message:
+        'Ranges must satisfy: min_plausible ≤ normal_low ≤ optimal_low ≤ optimal_high ≤ normal_high ≤ max_plausible',
+    },
+  );
+export type BiomarkerInput = z.infer<typeof biomarkerInputSchema>;

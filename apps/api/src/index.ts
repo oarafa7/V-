@@ -12,6 +12,7 @@ import { logger } from 'hono/logger';
 
 import { env } from './lib/env.js';
 import { ApiException, errorResponse } from './lib/http.js';
+import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
 import { biomarkerRoutes } from './routes/biomarkers.js';
 import { paymentRoutes } from './routes/payments.js';
@@ -31,6 +32,7 @@ v1.route('/auth', authRoutes);
 v1.route('/users', userRoutes);
 v1.route('/results', resultRoutes);
 v1.route('/payments', paymentRoutes);
+v1.route('/admin', adminRoutes);
 // Subscription + biomarker routes register their own full paths.
 v1.route('/', subscriptionRoutes);
 v1.route('/', biomarkerRoutes);

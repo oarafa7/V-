@@ -16,6 +16,7 @@ payments, the biomarker library, categorization, and biomarker detail pages.
 vital/
 ├── apps/
 │   ├── mobile/          # Expo (React Native) app — Expo Router, NativeWind, Zustand
+│   ├── admin/           # Next.js admin dashboard — users, lab uploads, plans, content
 │   └── api/             # Hono backend — Drizzle ORM + Supabase Postgres, Paymob
 ├── packages/
 │   └── shared/          # Shared types, Zod schemas, biomarker dataset, status logic
@@ -45,6 +46,11 @@ pnpm dev:api                                 # http://localhost:3000
 # Mobile
 cp apps/mobile/.env.example apps/mobile/.env # point EXPO_PUBLIC_API_URL at the API
 pnpm dev:mobile                              # Expo — open in Expo Go (iOS/Android)
+
+# Admin dashboard (web)
+cp apps/admin/.env.example apps/admin/.env   # point NEXT_PUBLIC_API_URL at the API
+pnpm --filter @vital/api db:make-admin you@example.com  # promote a user to admin
+pnpm --filter @vital/admin dev               # http://localhost:3001
 ```
 
 ## Useful scripts (root)
@@ -56,6 +62,8 @@ pnpm dev:mobile                              # Expo — open in Expo Go (iOS/And
 | `pnpm db:migrate` | Apply migrations to the database |
 | `pnpm db:seed` | Seed categories, biomarkers, and plans (idempotent) |
 | `pnpm dev:api` / `pnpm dev:mobile` | Run backend / mobile in dev |
+| `pnpm --filter @vital/admin dev` | Run the admin dashboard (port 3001) |
+| `pnpm --filter @vital/api db:make-admin <email>` | Promote a user to admin |
 
 ## Architecture notes
 
@@ -89,6 +97,39 @@ payments:       POST /payments/initiate · POST /payments/webhook
 biomarkers:     GET /biomarkers · GET /biomarkers/:id · GET /biomarker-categories
 results:        GET /results/me · GET /results/me/:biomarkerId · POST /results · DELETE /results/:id
 ```
+
+## Admin dashboard
+
+A Next.js (App Router) web app in `apps/admin`, gated by `users.role = 'admin'`
+(set via `db:make-admin`). It talks to the same Hono API under `/api/v1/admin`,
+which is protected by `requireAuth` + `requireAdmin`. Modules:
+
+- **Overview** — users, active subscriptions, revenue, results, pending uploads.
+- **Users** — searchable list; per-user detail page with profile/role editing,
+  subscription, recorded values, manual result entry, and lab uploads.
+- **Lab results (PDF → review → confirm)** — upload a lab PDF; the API stores it
+  in Supabase Storage, extracts text, and matches it against the biomarker
+  library to produce **draft** rows. The admin reviews/edits values and selects
+  which to import — nothing is saved until confirmed. (Parsing is heuristic by
+  design; the review step keeps the data clean.)
+- **Plans & pricing** — create/edit/deactivate subscription plans.
+- **Biomarkers & categories** — full CRUD over the library content and ranges
+  (range ordering invariant enforced server-side).
+
+```
+admin (Bearer + admin role, under /api/v1):
+  overview:    GET  /admin/overview
+  users:       GET  /admin/users · GET/PUT /admin/users/:id
+  results:     POST /admin/users/:id/results · DELETE /admin/results/:id
+  lab uploads: POST /admin/users/:id/lab-uploads · GET /admin/lab-uploads/:id
+               POST /admin/lab-uploads/:id/confirm · DELETE /admin/lab-uploads/:id
+  plans:       GET/POST /admin/plans · PUT/DELETE /admin/plans/:id
+  categories:  GET/POST /admin/categories · PUT/DELETE /admin/categories/:id
+  biomarkers:  GET/POST /admin/biomarkers · PUT/DELETE /admin/biomarkers/:id
+```
+
+> Requires a Supabase Storage bucket (`SUPABASE_STORAGE_BUCKET`, default
+> `lab-results`) for the uploaded PDFs.
 
 ## Phase 1 status
 

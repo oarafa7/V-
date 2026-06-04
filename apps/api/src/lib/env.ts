@@ -15,6 +15,8 @@ const envSchema = z.object({
   SUPABASE_SERVICE_KEY: z.string().min(1),
   // Anon key is optional on the server but handy for JWT verification fallback.
   SUPABASE_JWT_SECRET: z.string().min(1).optional(),
+  // Storage bucket for admin-uploaded lab PDFs.
+  SUPABASE_STORAGE_BUCKET: z.string().min(1).default('lab-results'),
 
   PAYMOB_API_KEY: z.string().min(1),
   PAYMOB_INTEGRATION_ID: z.string().min(1),

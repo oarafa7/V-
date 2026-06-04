@@ -28,6 +28,8 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   fullName: text('full_name').notNull(),
   phone: text('phone'),
+  // 'user' | 'admin' — gates the admin dashboard via requireAdmin.
+  role: text('role').notNull().default('user'),
   dateOfBirth: date('date_of_birth'),
   gender: text('gender'),
   heightCm: integer('height_cm'),
@@ -135,8 +137,45 @@ export const userBiomarkerResults = pgTable('user_biomarker_results', {
   testedAt: date('tested_at').notNull(),
   labName: text('lab_name'),
   notes: text('notes'),
+  // 'manual' (user-entered) | 'admin' (admin-entered) | 'lab_upload' (from a parsed PDF)
+  source: text('source').notNull().default('manual'),
+  // When source = 'lab_upload', links back to the originating upload.
+  labUploadId: uuid('lab_upload_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// lab_uploads (admin-uploaded lab PDFs + parse state)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const labUploads = pgTable('lab_uploads', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  // Supabase Storage object path for the original PDF.
+  filePath: text('file_path').notNull(),
+  originalName: text('original_name').notNull(),
+  labName: text('lab_name'),
+  testedAt: date('tested_at'),
+  // 'parsed' (awaiting review) | 'confirmed' (results created) | 'failed'
+  status: text('status').notNull().default('parsed'),
+  // Draft matches extracted from the PDF, pending admin confirmation.
+  parsed: jsonb('parsed').$type<ParsedLabRow[]>().notNull().default([]),
+  resultCount: integer('result_count').notNull().default(0),
+  uploadedBy: uuid('uploaded_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export interface ParsedLabRow {
+  biomarkerId: string | null;
+  biomarkerName: string;
+  matchedName: string | null;
+  value: number | null;
+  unit: string | null;
+  confidence: number; // 0..1
+  include: boolean;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Relations
@@ -145,6 +184,11 @@ export const userBiomarkerResults = pgTable('user_biomarker_results', {
 export const usersRelations = relations(users, ({ many }) => ({
   subscriptions: many(subscriptions),
   results: many(userBiomarkerResults),
+  labUploads: many(labUploads),
+}));
+
+export const labUploadsRelations = relations(labUploads, ({ one }) => ({
+  user: one(users, { fields: [labUploads.userId], references: [users.id] }),
 }));
 
 export const subscriptionPlansRelations = relations(subscriptionPlans, ({ many }) => ({
@@ -187,3 +231,5 @@ export type SubscriptionRow = typeof subscriptions.$inferSelect;
 export type BiomarkerCategoryRow = typeof biomarkerCategories.$inferSelect;
 export type BiomarkerRow = typeof biomarkers.$inferSelect;
 export type UserBiomarkerResultRow = typeof userBiomarkerResults.$inferSelect;
+export type LabUploadRow = typeof labUploads.$inferSelect;
+export type NewLabUploadRow = typeof labUploads.$inferInsert;

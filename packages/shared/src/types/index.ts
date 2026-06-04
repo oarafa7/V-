@@ -16,6 +16,12 @@ export type ISODateTimeString = string; // e.g. "2026-06-03T11:37:00.000Z"
 
 export type Gender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
+export type UserRole = 'user' | 'admin';
+
+export type ResultSource = 'manual' | 'admin' | 'lab_upload';
+
+export type LabUploadStatus = 'parsed' | 'confirmed' | 'failed';
+
 export type PlanName = 'basic' | 'premium';
 
 export type SubscriptionStatus = 'active' | 'expired' | 'cancelled';
@@ -63,6 +69,7 @@ export interface User {
   id: UUID;
   email: string;
   full_name: string;
+  role: UserRole;
   phone: string | null;
   date_of_birth: ISODateString | null;
   gender: Gender | null;
@@ -162,7 +169,72 @@ export interface UserBiomarkerResult {
   tested_at: ISODateString;
   lab_name: string | null;
   notes: string | null;
+  source: ResultSource;
+  lab_upload_id: UUID | null;
   created_at: ISODateTimeString;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Admin
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** One row of values extracted from a lab PDF, pending admin confirmation. */
+export interface ParsedLabRow {
+  biomarker_id: UUID | null;
+  biomarker_name: string; // as written in the PDF
+  matched_name: string | null; // the VITAL biomarker it matched, if any
+  value: number | null;
+  unit: string | null;
+  confidence: number; // 0..1
+  include: boolean;
+}
+
+export interface LabUpload {
+  id: UUID;
+  user_id: UUID;
+  file_path: string;
+  original_name: string;
+  lab_name: string | null;
+  tested_at: ISODateString | null;
+  status: LabUploadStatus;
+  parsed: ParsedLabRow[];
+  result_count: number;
+  uploaded_by: UUID | null;
+  created_at: ISODateTimeString;
+  /** Signed URL to view the original PDF (populated on demand). */
+  file_url?: string;
+}
+
+/** Compact row for the admin user list. */
+export interface AdminUserSummary {
+  id: UUID;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  phone: string | null;
+  subscription_status: SubscriptionStatus | null;
+  plan_name: PlanName | null;
+  result_count: number;
+  created_at: ISODateTimeString;
+}
+
+/** Full admin view of a single user. */
+export interface AdminUserDetail {
+  user: User;
+  subscription: SubscriptionWithPlan | null;
+  results: UserBiomarkerResult[];
+  lab_uploads: LabUpload[];
+}
+
+export interface AdminOverview {
+  users_total: number;
+  admins_total: number;
+  active_subscriptions: number;
+  revenue_egp: number;
+  results_total: number;
+  lab_uploads_total: number;
+  pending_uploads: number;
+  plan_breakdown: { plan: PlanName; count: number }[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

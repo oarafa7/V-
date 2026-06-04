@@ -6,6 +6,7 @@
 import type {
   Biomarker,
   BiomarkerCategory,
+  LabUpload,
   Subscription,
   SubscriptionPlan,
   User,
@@ -15,6 +16,7 @@ import type {
 import type {
   BiomarkerCategoryRow,
   BiomarkerRow,
+  LabUploadRow,
   SubscriptionPlanRow,
   SubscriptionRow,
   UserBiomarkerResultRow,
@@ -34,6 +36,7 @@ export function serializeUser(row: UserRow): User {
     id: row.id,
     email: row.email,
     full_name: row.fullName,
+    role: (row.role as User['role']) ?? 'user',
     phone: row.phone,
     date_of_birth: row.dateOfBirth,
     gender: (row.gender as User['gender']) ?? null,
@@ -116,6 +119,32 @@ export function serializeResult(row: UserBiomarkerResultRow): UserBiomarkerResul
     tested_at: row.testedAt,
     lab_name: row.labName,
     notes: row.notes,
+    source: (row.source as UserBiomarkerResult['source']) ?? 'manual',
+    lab_upload_id: row.labUploadId ?? null,
+    created_at: iso(row.createdAt),
+  };
+}
+
+export function serializeLabUpload(row: LabUploadRow): LabUpload {
+  return {
+    id: row.id,
+    user_id: row.userId,
+    file_path: row.filePath,
+    original_name: row.originalName,
+    lab_name: row.labName,
+    tested_at: row.testedAt,
+    status: row.status as LabUpload['status'],
+    parsed: (row.parsed ?? []).map((p) => ({
+      biomarker_id: p.biomarkerId,
+      biomarker_name: p.biomarkerName,
+      matched_name: p.matchedName,
+      value: p.value,
+      unit: p.unit,
+      confidence: p.confidence,
+      include: p.include,
+    })),
+    result_count: row.resultCount,
+    uploaded_by: row.uploadedBy ?? null,
     created_at: iso(row.createdAt),
   };
 }
