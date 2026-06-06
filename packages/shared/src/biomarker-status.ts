@@ -46,12 +46,13 @@ export function classifyBiomarkerSafe(
   return classifyBiomarker(value, biomarker);
 }
 
-/** Canonical status → color map used across the whole app. */
+/** Canonical status → color map used across the whole app (warm-paper palette).
+ *  Keep these in sync with the mobile theme tokens (apps/mobile/constants/tokens.js). */
 export const STATUS_COLORS: Record<BiomarkerStatus, string> = {
-  optimal: '#4CAF84',
-  suboptimal: '#C9A84C',
-  alert: '#E05252',
-  untested: '#3D5068',
+  optimal: '#6FA97D',
+  suboptimal: '#CDA24E',
+  alert: '#C2603C',
+  untested: '#B6AD9C',
 };
 
 export const STATUS_LABELS: Record<BiomarkerStatus, string> = {

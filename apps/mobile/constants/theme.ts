@@ -1,46 +1,24 @@
 /**
- * VITAL design tokens. The source of truth for colors/fonts/spacing used by
- * non-Tailwind code (charts, SVG, inline styles). Mirrors tailwind.config.js.
+ * VITAL design tokens for non-Tailwind code (SVG charts, inline styles,
+ * Reanimated). This is a thin, typed re-export of the SINGLE SOURCE OF TRUTH in
+ * `constants/tokens.js` — do NOT define colors/fonts here.
+ *
+ * ▶ Claude design: to re-skin the app, edit `constants/tokens.js` (one file).
+ *   It drives both these tokens and the Tailwind/NativeWind classes.
  */
-export const colors = {
-  obsidian: '#090B0E',
-  deep: '#0D1117',
-  surface: '#131920',
-  border: '#1E2830',
-  borderLight: '#243040',
-  gold: '#C9A84C',
-  goldLight: '#E8C878',
-  goldDim: '#8A6E30',
-  text: '#D4DCE8',
-  textDim: '#7A8FA6',
-  textMuted: '#3D5068',
-  white: '#F0F4F8',
-  red: '#E05252',
-  green: '#4CAF84',
-  cyan: '#4A9FB5',
-} as const;
+import * as tokens from './tokens';
 
-export const fonts = {
-  display: 'CormorantGaramond', // serif — headings, values
-  mono: 'DMMonoLight', // monospace — labels, codes
-  body: 'InstrumentSans', // sans — body text
-} as const;
+/** Color tokens — semantic roles (canvas, ink, accent, line, …) plus legacy
+ *  aliases (obsidian, gold, white, …) mapped onto the active theme's roles. */
+export const colors = tokens.colors;
 
-export const radius = { sm: 2, md: 4, lg: 8 } as const;
+/** Font family names for the active theme (display / body / mono). */
+export const fonts = tokens.fonts;
 
-export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  xxl: 32,
-} as const;
+export const radius = tokens.radius;
 
-/** Status → color, kept in sync with @vital/shared STATUS_COLORS. */
-export const statusColors = {
-  optimal: colors.green,
-  suboptimal: colors.gold,
-  alert: colors.red,
-  untested: colors.textMuted,
-} as const;
+export const spacing = tokens.spacing;
+
+/** Status → color, sourced from the active theme (mirrors @vital/shared
+ *  STATUS_COLORS). */
+export const statusColors = tokens.status;
