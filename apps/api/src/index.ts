@@ -17,6 +17,7 @@ import { authRoutes } from './routes/auth.js';
 import { biomarkerRoutes } from './routes/biomarkers.js';
 import { contentRoutes } from './routes/content.js';
 import { paymentRoutes } from './routes/payments.js';
+import { aiRoutes } from './routes/ai.js';
 import { resultRoutes } from './routes/results.js';
 import { scoreRoutes } from './routes/score.js';
 import { subscriptionRoutes } from './routes/subscriptions.js';
@@ -40,6 +41,7 @@ v1.route('/', subscriptionRoutes);
 v1.route('/', biomarkerRoutes);
 v1.route('/', contentRoutes);
 v1.route('/', scoreRoutes);
+v1.route('/', aiRoutes);
 
 app.route('/api/v1', v1);
 

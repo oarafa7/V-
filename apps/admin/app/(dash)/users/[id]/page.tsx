@@ -1,6 +1,6 @@
 'use client';
 
-import type { AdminUserDetail, Biomarker, LabUpload, ParsedLabRow, SubscriptionPlan } from '@vital/shared';
+import type { AdminUserDetail, AiInsight, Biomarker, LabUpload, ParsedLabRow, SubscriptionPlan } from '@vital/shared';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -206,6 +206,9 @@ export default function UserDetailPage() {
         </Card>
       ) : null}
 
+      {/* AI insights */}
+      <UserAiCard userId={id} />
+
       {/* Lab upload */}
       <div className="mt-8">
         <h2 className="mb-3 font-display text-xl font-bold text-ink">Lab results</h2>
@@ -289,6 +292,83 @@ function Row({ k, v }: { k: string; v: React.ReactNode }) {
       <dt className="text-inkMuted">{k}</dt>
       <dd className="font-medium capitalize text-ink">{v}</dd>
     </div>
+  );
+}
+
+function UserAiCard({ userId }: { userId: string }) {
+  const { push } = useToast();
+  const [insights, setInsights] = useState<AiInsight[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+
+  const load = () => {
+    api
+      .aiInsights({ userId })
+      .then((r) => setInsights(r.insights))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+  useEffect(load, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const generate = async () => {
+    setBusy(true);
+    try {
+      const r = await api.generateUserInsights(userId);
+      push('success', `Generated ${r.generated} insight(s)${r.pending_review ? ' (pending review)' : ''}`);
+      load();
+    } catch (e) {
+      push('error', e instanceof ApiError ? e.message : 'Failed');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const act = async (fn: () => Promise<unknown>, ok: string) => {
+    try {
+      await fn();
+      push('success', ok);
+      load();
+    } catch (e) {
+      push('error', e instanceof ApiError ? e.message : 'Failed');
+    }
+  };
+
+  return (
+    <Card className="mt-4 p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="font-display text-lg font-bold text-ink">AI insights</h3>
+        <Button variant="outline" onClick={generate} disabled={busy}>
+          {busy ? 'Generating…' : 'Generate'}
+        </Button>
+      </div>
+      {loading ? (
+        <div className="text-sm text-inkSoft">Loading…</div>
+      ) : insights.length === 0 ? (
+        <div className="text-sm text-inkMuted">No insights yet. Generate to create a summary &amp; protocol.</div>
+      ) : (
+        <div className="space-y-3">
+          {insights.map((i) => (
+            <div key={i.id} className="rounded-lg border border-line p-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="font-medium text-ink">{i.title}</div>
+                  <div className="text-xs capitalize text-inkMuted">{i.type} · {i.status} · {i.source}</div>
+                </div>
+                <div className="flex gap-3">
+                  {i.status !== 'published' ? (
+                    <button onClick={() => act(() => api.publishInsight(i.id), 'Published')} className="text-sm text-greenInk hover:underline">Publish</button>
+                  ) : null}
+                  {i.status !== 'archived' ? (
+                    <button onClick={() => act(() => api.archiveInsight(i.id), 'Archived')} className="text-sm text-amber hover:underline">Archive</button>
+                  ) : null}
+                </div>
+              </div>
+              <div className="mt-2 whitespace-pre-wrap text-sm text-inkSoft">{i.body}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
 

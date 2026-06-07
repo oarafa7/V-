@@ -3,12 +3,13 @@
  * summaries, and prompts to subscribe / book a first test.
  */
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CategoryCard, EmptyState, ScoreHero, SectionHeader } from '@/components/ui';
+import { CategoryCard, EmptyState, LucideIcon, ScoreHero, SectionHeader } from '@/components/ui';
 import { colors } from '@/constants/theme';
+import { aiApi } from '@/lib/api';
 import { summariseByCategory } from '@/lib/library-select';
 import { useAuthStore } from '@/lib/store/auth';
 import { useLibraryStore } from '@/lib/store/library';
@@ -26,6 +27,7 @@ export default function Dashboard() {
   const score = useScoreStore((s) => s.score);
   const history = useScoreStore((s) => s.history);
   const fetchScore = useScoreStore((s) => s.fetch);
+  const [aiEnabled, setAiEnabled] = useState(false);
 
   useEffect(() => {
     if (hasActive()) {
@@ -33,6 +35,10 @@ export default function Dashboard() {
       void fetchScore(true);
     }
   }, [hasActive, fetch, fetchScore]);
+
+  useEffect(() => {
+    aiApi.status().then((r) => setAiEnabled(r.status.enabled)).catch(() => {});
+  }, []);
 
   const summaries = useMemo(() => summariseByCategory(biomarkers), [biomarkers]);
 
@@ -69,6 +75,26 @@ export default function Dashboard() {
             {score ? (
               <View className="mt-6 px-5">
                 <ScoreHero score={score} history={history} />
+              </View>
+            ) : null}
+
+            {/* AI entry */}
+            {aiEnabled ? (
+              <View className="mt-4 px-5">
+                <Pressable
+                  onPress={() => router.push('/insights')}
+                  className="flex-row items-center rounded-lg border p-4"
+                  style={{ backgroundColor: colors.surface, borderColor: colors.border }}
+                >
+                  <LucideIcon name="Sparkles" size={22} color={colors.gold} />
+                  <View className="ml-3 flex-1">
+                    <Text className="font-display" style={{ color: colors.white, fontSize: 16 }}>VITAL AI</Text>
+                    <Text className="font-body" style={{ color: colors.textDim, fontSize: 12 }}>
+                      Insights & answers from your results
+                    </Text>
+                  </View>
+                  <LucideIcon name="ChevronRight" size={20} color={colors.textDim} />
+                </Pressable>
               </View>
             ) : null}
 

@@ -7,6 +7,10 @@ import type {
   AdminUpdateUserInput,
   AdminUserDetail,
   AdminUserSummary,
+  AiConfig,
+  AiConfigInput,
+  AiInsight,
+  AiUsageStats,
   AppContent,
   AppContentInput,
   Biomarker,
@@ -191,4 +195,27 @@ export const api = {
   content: () => request<{ content: AppContent }>('/admin/app-content'),
   saveContent: (body: AppContentInput) =>
     request<{ content: AppContent }>('/admin/app-content', { method: 'PUT', body }),
+
+  // AI Health Intelligence
+  aiConfig: () => request<{ config: AiConfig }>('/admin/ai/config'),
+  saveAiConfig: (body: AiConfigInput) =>
+    request<{ config: AiConfig }>('/admin/ai/config', { method: 'PUT', body }),
+  aiInsights: (params: { status?: string; userId?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.status) q.set('status', params.status);
+    if (params.userId) q.set('userId', params.userId);
+    return request<{ insights: AiInsight[] }>(`/admin/ai/insights?${q}`);
+  },
+  publishInsight: (id: string) =>
+    request<{ insight: AiInsight }>(`/admin/ai/insights/${id}/publish`, { method: 'POST' }),
+  archiveInsight: (id: string) =>
+    request<{ insight: AiInsight }>(`/admin/ai/insights/${id}/archive`, { method: 'POST' }),
+  deleteInsight: (id: string) =>
+    request<{ success: boolean }>(`/admin/ai/insights/${id}`, { method: 'DELETE' }),
+  generateUserInsights: (userId: string) =>
+    request<{ success: boolean; generated: number; pending_review: boolean }>(
+      `/admin/users/${userId}/ai/generate`,
+      { method: 'POST' },
+    ),
+  aiUsage: () => request<{ usage: AiUsageStats }>('/admin/ai/usage'),
 };

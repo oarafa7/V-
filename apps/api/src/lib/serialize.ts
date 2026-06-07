@@ -4,6 +4,11 @@
  * declared in `@vital/shared`.
  */
 import type {
+  AiChatMessage,
+  AiInsight,
+  AiInsightSource,
+  AiInsightStatus,
+  AiInsightType,
   Biomarker,
   BiomarkerCategory,
   HealthGoalOption,
@@ -17,6 +22,8 @@ import type {
 } from '@vital/shared';
 
 import type {
+  AiChatMessageRow,
+  AiInsightRow,
   BiomarkerCategoryRow,
   BiomarkerRow,
   HealthGoalRow,
@@ -161,6 +168,33 @@ export function serializeLabUpload(row: LabUploadRow): LabUpload {
     })),
     result_count: row.resultCount,
     uploaded_by: row.uploadedBy ?? null,
+    created_at: iso(row.createdAt),
+  };
+}
+
+export function serializeAiInsight(row: AiInsightRow): AiInsight {
+  return {
+    id: row.id,
+    user_id: row.userId,
+    type: row.type as AiInsightType,
+    title: row.title,
+    body: row.body,
+    status: row.status as AiInsightStatus,
+    model: row.model,
+    source: row.source as AiInsightSource,
+    input_tokens: row.inputTokens,
+    output_tokens: row.outputTokens,
+    created_at: iso(row.createdAt),
+    published_at: row.publishedAt ? iso(row.publishedAt) : null,
+  };
+}
+
+export function serializeAiChatMessage(row: AiChatMessageRow): AiChatMessage {
+  return {
+    id: row.id,
+    user_id: row.userId,
+    role: row.role as AiChatMessage['role'],
+    content: row.content,
     created_at: iso(row.createdAt),
   };
 }

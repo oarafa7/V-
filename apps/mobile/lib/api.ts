@@ -4,6 +4,9 @@
  * surface of typed endpoint helpers.
  */
 import type {
+  AiChatMessage,
+  AiInsight,
+  AiStatus,
   ApiError as ApiErrorEnvelope,
   AppContent,
   BiomarkerListResponse,
@@ -148,6 +151,20 @@ export const contentApi = {
 export const scoreApi = {
   get: () => request<{ score: VitalScore }>('/score/me'),
   history: () => request<{ history: ScoreHistoryPoint[] }>('/score/me/history'),
+};
+
+// ── AI Health Intelligence ─────────────────────────────────────────────────────
+export const aiApi = {
+  status: () => request<{ status: AiStatus }>('/ai-status', { auth: false }),
+  insights: () => request<{ insights: AiInsight[] }>('/ai/insights/me'),
+  generate: () =>
+    request<{ success: boolean; generated: number; pending_review: boolean }>(
+      '/ai/insights/me/generate',
+      { method: 'POST' },
+    ),
+  chatHistory: () => request<{ messages: AiChatMessage[] }>('/ai/chat/me'),
+  sendChat: (message: string) =>
+    request<{ reply: string }>('/ai/chat/me', { method: 'POST', body: { message } }),
 };
 
 // ── Results ───────────────────────────────────────────────────────────────────

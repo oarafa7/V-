@@ -286,3 +286,25 @@ export const appContentSchema = z.object({
   lab_partner: labPartnerSchema,
 });
 export type AppContentInput = z.infer<typeof appContentSchema>;
+
+// AI Health Intelligence (admin)
+export const aiConfigSchema = z.object({
+  enabled: z.boolean(),
+  model: z.string().min(1).max(80),
+  max_tokens: z.number().int().min(256).max(8000),
+  persona: z.string().max(4000),
+  disclaimer: z.string().max(2000),
+  features: z.object({
+    insights: z.boolean(),
+    protocols: z.boolean(),
+    chat: z.boolean(),
+  }),
+  require_review: z.boolean(),
+  allow_user_generate: z.boolean(),
+});
+export type AiConfigInput = z.infer<typeof aiConfigSchema>;
+
+export const chatInputSchema = z.object({
+  message: z.string().min(1).max(2000),
+});
+export type ChatInput = z.infer<typeof chatInputSchema>;

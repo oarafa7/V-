@@ -13,6 +13,7 @@ const NAV = [
   { href: '/categories', label: 'Categories' },
   { href: '/goals', label: 'Health Goals' },
   { href: '/content', label: 'App Content' },
+  { href: '/ai', label: 'AI Intelligence' },
 ];
 
 export function Sidebar() {

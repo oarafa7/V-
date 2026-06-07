@@ -11,6 +11,7 @@ import {
   type AdminUserSummary,
   adminCreateResultSchema,
   adminUpdateUserSchema,
+  aiConfigSchema,
   appContentSchema,
   biomarkerInputSchema,
   categoryInputSchema,
@@ -28,6 +29,8 @@ import { Hono } from 'hono';
 
 import { db } from '../db/client.js';
 import {
+  aiChatMessages,
+  aiInsights,
   biomarkerCategories,
   biomarkers,
   healthGoals,
@@ -37,11 +40,14 @@ import {
   userBiomarkerResults,
   users,
 } from '../db/schema.js';
+import { generateAndStoreInsights } from '../lib/ai.js';
+import { getAiConfig, setAiConfig } from '../lib/ai-config.js';
 import { getAppContent, setAppContent } from '../lib/content.js';
 import { errorResponse } from '../lib/http.js';
 import { parseLabPdf } from '../lib/lab-pdf.js';
 import { computeUserScore, recordScoreSnapshot } from '../lib/score.js';
 import {
+  serializeAiInsight,
   serializeBiomarker,
   serializeCategory,
   serializeHealthGoal,
@@ -752,4 +758,100 @@ adminRoutes.get('/app-content', async (c) => {
 adminRoutes.put('/app-content', validate('json', appContentSchema), async (c) => {
   const content = await setAppContent(c.req.valid('json'));
   return c.json({ content });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI Health Intelligence (config, review queue, generation, usage)
+// ─────────────────────────────────────────────────────────────────────────────
+
+adminRoutes.get('/ai/config', async (c) => {
+  const config = await getAiConfig();
+  return c.json({ config });
+});
+
+adminRoutes.put('/ai/config', validate('json', aiConfigSchema), async (c) => {
+  const config = await setAiConfig(c.req.valid('json'));
+  return c.json({ config });
+});
+
+// Insight review queue. Filter by status and/or user.
+adminRoutes.get('/ai/insights', async (c) => {
+  const status = c.req.query('status');
+  const userId = c.req.query('userId');
+  const conditions = [];
+  if (status) conditions.push(eq(aiInsights.status, status));
+  if (userId) conditions.push(eq(aiInsights.userId, userId));
+  const rows = await db
+    .select()
+    .from(aiInsights)
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(aiInsights.createdAt))
+    .limit(200);
+  return c.json({ insights: rows.map(serializeAiInsight) });
+});
+
+adminRoutes.post('/ai/insights/:id/publish', async (c) => {
+  const id = c.req.param('id');
+  const [row] = await db
+    .update(aiInsights)
+    .set({ status: 'published', publishedAt: new Date() })
+    .where(eq(aiInsights.id, id))
+    .returning();
+  if (!row) return errorResponse(c, 'not_found', 'Insight not found');
+  return c.json({ insight: serializeAiInsight(row) });
+});
+
+adminRoutes.post('/ai/insights/:id/archive', async (c) => {
+  const id = c.req.param('id');
+  const [row] = await db
+    .update(aiInsights)
+    .set({ status: 'archived' })
+    .where(eq(aiInsights.id, id))
+    .returning();
+  if (!row) return errorResponse(c, 'not_found', 'Insight not found');
+  return c.json({ insight: serializeAiInsight(row) });
+});
+
+adminRoutes.delete('/ai/insights/:id', async (c) => {
+  const id = c.req.param('id');
+  const [deleted] = await db.delete(aiInsights).where(eq(aiInsights.id, id)).returning();
+  if (!deleted) return errorResponse(c, 'not_found', 'Insight not found');
+  return c.json({ success: true });
+});
+
+// Admin triggers generation for a specific user.
+adminRoutes.post('/users/:id/ai/generate', async (c) => {
+  const userId = c.req.param('id');
+  const [user] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1);
+  if (!user) return errorResponse(c, 'not_found', 'User not found');
+  const config = await getAiConfig();
+  if (!config.enabled) return errorResponse(c, 'unprocessable', 'AI is disabled.');
+  const generated = await generateAndStoreInsights(userId, config, 'admin');
+  return c.json({ success: true, generated, pending_review: config.require_review });
+});
+
+// Token usage / cost visibility.
+adminRoutes.get('/ai/usage', async (c) => {
+  const [ins] = await db
+    .select({
+      input: sql<number>`coalesce(sum(${aiInsights.inputTokens}), 0)`,
+      output: sql<number>`coalesce(sum(${aiInsights.outputTokens}), 0)`,
+      count: sql<number>`count(*)`,
+    })
+    .from(aiInsights);
+  const [chat] = await db
+    .select({
+      input: sql<number>`coalesce(sum(${aiChatMessages.inputTokens}), 0)`,
+      output: sql<number>`coalesce(sum(${aiChatMessages.outputTokens}), 0)`,
+      count: sql<number>`count(*)`,
+    })
+    .from(aiChatMessages);
+  return c.json({
+    usage: {
+      total_input_tokens: Number(ins?.input ?? 0) + Number(chat?.input ?? 0),
+      total_output_tokens: Number(ins?.output ?? 0) + Number(chat?.output ?? 0),
+      insight_count: Number(ins?.count ?? 0),
+      chat_message_count: Number(chat?.count ?? 0),
+    },
+  });
 });

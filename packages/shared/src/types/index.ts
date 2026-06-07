@@ -353,6 +353,80 @@ export interface ScoreHistoryPoint {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// AI Health Intelligence (Phase 2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type AiInsightType = 'summary' | 'protocol';
+export type AiInsightStatus = 'draft' | 'published' | 'archived';
+export type AiInsightSource = 'system' | 'admin' | 'user';
+
+/** A generated clinician note / protocol grounded in a user's lab data. */
+export interface AiInsight {
+  id: UUID;
+  user_id: UUID;
+  type: AiInsightType;
+  title: string;
+  body: string; // markdown
+  status: AiInsightStatus;
+  model: string;
+  source: AiInsightSource;
+  input_tokens: number;
+  output_tokens: number;
+  created_at: ISODateTimeString;
+  published_at: ISODateTimeString | null;
+}
+
+export type AiChatRole = 'user' | 'assistant';
+
+export interface AiChatMessage {
+  id: UUID;
+  user_id: UUID;
+  role: AiChatRole;
+  content: string;
+  created_at: ISODateTimeString;
+}
+
+/** Admin-controlled AI configuration (stored in app_settings). */
+export interface AiConfig {
+  enabled: boolean;
+  model: string;
+  max_tokens: number;
+  persona: string; // appended to the system prompt
+  disclaimer: string; // shown to users alongside AI output
+  features: { insights: boolean; protocols: boolean; chat: boolean };
+  require_review: boolean; // insights start as drafts; users see only published
+  allow_user_generate: boolean; // users may trigger generation themselves
+}
+
+export const DEFAULT_AI_CONFIG: AiConfig = {
+  enabled: false,
+  model: 'claude-opus-4-8',
+  max_tokens: 3000,
+  persona:
+    'You are VITAL, a careful, encouraging preventive-health guide. You explain blood biomarker results in plain language, focus on what is modifiable, and never diagnose disease or prescribe medication.',
+  disclaimer:
+    'This is AI-generated wellness information, not medical advice. Always consult a licensed clinician before making health decisions.',
+  features: { insights: true, protocols: true, chat: true },
+  require_review: true,
+  allow_user_generate: false,
+};
+
+/** Public AI status surfaced to the mobile app. */
+export interface AiStatus {
+  enabled: boolean;
+  features: { insights: boolean; protocols: boolean; chat: boolean };
+  allow_user_generate: boolean;
+  disclaimer: string;
+}
+
+export interface AiUsageStats {
+  total_input_tokens: number;
+  total_output_tokens: number;
+  insight_count: number;
+  chat_message_count: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // API envelopes
 // ─────────────────────────────────────────────────────────────────────────────
 

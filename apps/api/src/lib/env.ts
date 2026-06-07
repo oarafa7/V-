@@ -26,6 +26,9 @@ const envSchema = z.object({
 
   // Where Paymob should redirect the WebView after payment.
   PAYMENT_RETURN_URL: z.string().url().default('https://vital.app/payment/return'),
+
+  // AI Health Intelligence (optional — features degrade gracefully if absent).
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
 });
 
 function loadEnv() {

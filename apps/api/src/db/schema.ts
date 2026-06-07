@@ -239,6 +239,43 @@ export const scoreSnapshots = pgTable(
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ai_insights (Phase 2 — AI-generated clinician notes / protocols)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const aiInsights = pgTable('ai_insights', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull(), // 'summary' | 'protocol'
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  status: text('status').notNull().default('draft'), // draft | published | archived
+  model: text('model').notNull().default(''),
+  source: text('source').notNull().default('system'), // system | admin | user
+  inputTokens: integer('input_tokens').notNull().default(0),
+  outputTokens: integer('output_tokens').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ai_chat_messages (Phase 2 — grounded chat history)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const aiChatMessages = pgTable('ai_chat_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  role: text('role').notNull(), // user | assistant
+  content: text('content').notNull(),
+  inputTokens: integer('input_tokens').notNull().default(0),
+  outputTokens: integer('output_tokens').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Relations
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -298,3 +335,5 @@ export type HealthGoalRow = typeof healthGoals.$inferSelect;
 export type AppSettingRow = typeof appSettings.$inferSelect;
 export type ScoreSnapshotRow = typeof scoreSnapshots.$inferSelect;
 export type NewScoreSnapshotRow = typeof scoreSnapshots.$inferInsert;
+export type AiInsightRow = typeof aiInsights.$inferSelect;
+export type AiChatMessageRow = typeof aiChatMessages.$inferSelect;
