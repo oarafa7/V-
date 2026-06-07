@@ -60,6 +60,27 @@ function Sparkline({ history, color }: { history: ScoreHistoryPoint[]; color: st
   );
 }
 
+function SubScore({
+  label,
+  value,
+  suffix,
+}: {
+  label: string;
+  value: number | null;
+  suffix?: string;
+}) {
+  return (
+    <View className="flex-1 items-center">
+      <Text className="font-display" style={{ color: colors.ink, fontSize: 20 }}>
+        {value == null ? '—' : `${value}${suffix ?? ''}`}
+      </Text>
+      <Text className="font-body" style={{ color: colors.inkSoft, fontSize: 11, marginTop: 1 }}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 export function ScoreHero({
   score,
   history,
@@ -112,6 +133,15 @@ export function ScoreHero({
           ) : null}
         </View>
       </View>
+
+      {/* Sub-scores */}
+      {hasResults ? (
+        <View className="mt-4 flex-row border-t pt-3" style={{ borderColor: colors.line }}>
+          <SubScore label="Cardiometabolic" value={score.cardiometabolic_score} />
+          <SubScore label="Longevity" value={score.longevity_score} />
+          <SubScore label="Confidence" value={score.confidence} suffix="%" />
+        </View>
+      ) : null}
 
       {history.length >= 2 ? (
         <View className="mt-4 border-t pt-3" style={{ borderColor: colors.line }}>

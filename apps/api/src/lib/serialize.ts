@@ -173,6 +173,9 @@ export function serializeScoreSnapshot(row: ScoreSnapshotRow): ScoreHistoryPoint
     tested_count: row.testedCount,
     total_count: row.totalCount,
     biological_age: row.biologicalAge,
+    cardiometabolic_score: row.cardiometabolicScore,
+    longevity_score: row.longevityScore,
+    confidence: row.confidence,
     recorded_on: row.recordedOn,
     created_at: iso(row.createdAt),
   };

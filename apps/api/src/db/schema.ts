@@ -224,6 +224,9 @@ export const scoreSnapshots = pgTable(
     testedCount: integer('tested_count').notNull().default(0),
     totalCount: integer('total_count').notNull().default(0),
     biologicalAge: integer('biological_age'),
+    cardiometabolicScore: integer('cardiometabolic_score'),
+    longevityScore: integer('longevity_score'),
+    confidence: integer('confidence').notNull().default(0),
     // Full category breakdown at the time of the snapshot.
     breakdown: jsonb('breakdown').$type<CategoryScoreSnapshot[]>().notNull().default([]),
     // The calendar day this snapshot represents (one snapshot per user per day).

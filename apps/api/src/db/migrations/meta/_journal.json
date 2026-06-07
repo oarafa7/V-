@@ -29,6 +29,13 @@
       "when": 1780823989530,
       "tag": "0003_score_snapshots",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780825976556,
+      "tag": "0004_health_model_scores",
+      "breakpoints": true
     }
   ]
 }

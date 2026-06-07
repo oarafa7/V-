@@ -293,23 +293,47 @@ export type ScoreBand = 'excellent' | 'good' | 'fair' | 'attention';
 export interface CategoryScore {
   slug: string;
   name: string;
-  score: number; // 0..100, average of the category's tested markers
+  score: number; // 0..100, continuous health score of the category's tested markers
   band: ScoreBand;
   tested: number; // markers with a result in this category
   total: number; // active markers in this category
 }
 
-/** The computed VITAL Score for a user at a point in time. */
+/** Levine clinical PhenoAge result (the lab-grade biological-age engine). */
+export interface PhenoAgeResult {
+  biological_age: number; // years
+  mortality_risk_10yr: number; // 0..1, the model's 10-year mortality probability
+  markers_used: number; // real (non-imputed) markers used, of markers_total
+  markers_total: number; // markers the full model expects (9)
+  imputed: string[]; // canonical marker keys that were imputed (missing data)
+}
+
+/** A single marker called out as moving a score up or down. */
+export interface ScoreDriver {
+  slug: string;
+  name: string;
+  category: string;
+  score: number; // 0..100 marker health score
+}
+
+/** The computed VITAL Score for a user at a point in time (lab-only model). */
 export interface VitalScore {
-  score: number; // 0..100 overall (category-weighted)
+  score: number; // 0..100 overall Health Score
   band: ScoreBand;
   tested_count: number; // markers with a result
   total_count: number; // active markers considered
   coverage: number; // tested_count / total_count, 0..1
+  confidence: number; // 0..100 — how much to trust this assessment
   category_scores: CategoryScore[];
-  chronological_age: number | null; // from date_of_birth, if known
-  biological_age: number | null; // heuristic estimate, if age known
+  // Sub-scores (null when the underlying data is insufficient)
+  cardiometabolic_score: number | null; // 0..100
+  longevity_score: number | null; // 0..100
+  // Biological age (Levine PhenoAge when labs allow; null otherwise)
+  chronological_age: number | null;
+  biological_age: number | null;
   age_delta: number | null; // biological_age − chronological_age
+  phenoage: PhenoAgeResult | null;
+  drivers: { positive: ScoreDriver[]; negative: ScoreDriver[] };
   computed_at: ISODateTimeString;
 }
 
@@ -321,6 +345,9 @@ export interface ScoreHistoryPoint {
   tested_count: number;
   total_count: number;
   biological_age: number | null;
+  cardiometabolic_score: number | null;
+  longevity_score: number | null;
+  confidence: number;
   recorded_on: ISODateString;
   created_at: ISODateTimeString;
 }

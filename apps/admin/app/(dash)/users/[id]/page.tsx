@@ -147,21 +147,15 @@ export default function UserDetailPage() {
         </Card>
       </div>
 
-      {/* VITAL Score */}
+      {/* VITAL Score (lab-only health model) */}
       {score && score.tested_count > 0 ? (
         <Card className="mt-4 p-5">
           <div className="flex items-start justify-between">
             <div>
               <h3 className="font-display text-lg font-bold text-ink">VITAL Score</h3>
               <div className="mt-1 text-sm text-inkSoft">
-                {score.tested_count} of {score.total_count} markers tested
-                {score.biological_age != null
-                  ? ` · bio age ${score.biological_age}${
-                      score.age_delta != null && score.age_delta !== 0
-                        ? ` (${score.age_delta < 0 ? '−' : '+'}${Math.abs(score.age_delta)}y)`
-                        : ''
-                    }`
-                  : ''}
+                {score.tested_count} of {score.total_count} markers tested · confidence{' '}
+                {score.confidence}%
               </div>
             </div>
             <div className="text-right">
@@ -169,8 +163,34 @@ export default function UserDetailPage() {
               <div className="text-xs uppercase tracking-wide text-inkMuted">{score.band}</div>
             </div>
           </div>
-          {score.category_scores.length > 0 ? (
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <Metric label="Biological age" value={score.biological_age} hint={
+              score.age_delta != null && score.age_delta !== 0
+                ? `${score.age_delta < 0 ? '−' : '+'}${Math.abs(score.age_delta)}y vs ${score.chronological_age}`
+                : score.chronological_age != null ? `chrono ${score.chronological_age}` : undefined
+            } />
+            <Metric label="Cardiometabolic" value={score.cardiometabolic_score} />
+            <Metric label="Longevity" value={score.longevity_score} />
+            <Metric label="Confidence" value={score.confidence} suffix="%" />
+          </div>
+
+          {score.phenoage ? (
+            <div className="mt-3 text-xs text-inkMuted">
+              PhenoAge: {score.phenoage.markers_used}/{score.phenoage.markers_total} markers used
+              {score.phenoage.imputed.length > 0
+                ? ` · imputed: ${score.phenoage.imputed.join(', ')}`
+                : ''}{' '}
+              · 10-yr mortality {(score.phenoage.mortality_risk_10yr * 100).toFixed(1)}%
+            </div>
+          ) : (
+            <div className="mt-3 text-xs text-inkMuted">
+              Biological age unavailable — needs ≥4 of the 9 PhenoAge markers.
+            </div>
+          )}
+
+          {score.category_scores.filter((c) => c.tested > 0).length > 0 ? (
+            <div className="mt-4 grid gap-2 border-t border-line pt-3 sm:grid-cols-2">
               {score.category_scores
                 .filter((c) => c.tested > 0)
                 .map((c) => (
@@ -268,6 +288,28 @@ function Row({ k, v }: { k: string; v: React.ReactNode }) {
     <div className="flex items-center justify-between">
       <dt className="text-inkMuted">{k}</dt>
       <dd className="font-medium capitalize text-ink">{v}</dd>
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  hint,
+  suffix,
+}: {
+  label: string;
+  value: number | null;
+  hint?: string;
+  suffix?: string;
+}) {
+  return (
+    <div className="rounded-lg border border-line bg-canvas p-3">
+      <div className="font-display text-2xl font-bold text-ink">
+        {value == null ? '—' : `${value}${suffix ?? ''}`}
+      </div>
+      <div className="text-xs text-inkSoft">{label}</div>
+      {hint ? <div className="mt-0.5 text-xs text-inkMuted">{hint}</div> : null}
     </div>
   );
 }
