@@ -10,6 +10,7 @@ import { Hono } from 'hono';
 import { db } from '../db/client.js';
 import { biomarkers, userBiomarkerResults } from '../db/schema.js';
 import { errorResponse } from '../lib/http.js';
+import { recordScoreSnapshot } from '../lib/score.js';
 import { serializeResult } from '../lib/serialize.js';
 import { type AuthVariables, requireAuth } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscription.js';
@@ -82,6 +83,9 @@ resultRoutes.post('/', validate('json', createResultSchema), async (c) => {
     })
     .returning();
 
+  // Refresh today's VITAL Score snapshot (best-effort; never blocks the write).
+  await recordScoreSnapshot(userId);
+
   return c.json({ result: serializeResult(row!) }, 201);
 });
 
@@ -95,5 +99,8 @@ resultRoutes.delete('/:id', async (c) => {
     .returning();
 
   if (!deleted) return errorResponse(c, 'not_found', 'Result not found');
+
+  await recordScoreSnapshot(userId);
+
   return c.json({ success: true });
 });

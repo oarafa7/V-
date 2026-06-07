@@ -7,6 +7,7 @@ import { create } from 'zustand';
 
 import { authApi, userApi } from '../api';
 import { clearSession, getAccessToken, setSession } from '../auth';
+import { useScoreStore } from './score';
 
 interface AuthState {
   user: User | null;
@@ -62,6 +63,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   signOut: async () => {
     await authApi.logout().catch(() => undefined);
     await clearSession();
+    useScoreStore.getState().clear();
     set({ user: null, status: 'unauthenticated' });
   },
 }));

@@ -10,6 +10,7 @@ export { PlanCard } from './PlanCard';
 export { ProgressBar } from './ProgressBar';
 export { ProgressRing } from './ProgressRing';
 export { RangeBar } from './RangeBar';
+export { ScoreHero } from './ScoreHero';
 export { Screen } from './Screen';
 export { SectionHeader } from './SectionHeader';
 export { Skeleton, SkeletonList } from './SkeletonLoader';

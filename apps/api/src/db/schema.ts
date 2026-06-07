@@ -201,6 +201,41 @@ export const appSettings = pgTable('app_settings', {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// score_snapshots (Phase 2 — persisted VITAL Score history, one row per day)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface CategoryScoreSnapshot {
+  slug: string;
+  name: string;
+  score: number;
+  tested: number;
+  total: number;
+}
+
+export const scoreSnapshots = pgTable(
+  'score_snapshots',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    score: integer('score').notNull(),
+    band: text('band').notNull(),
+    testedCount: integer('tested_count').notNull().default(0),
+    totalCount: integer('total_count').notNull().default(0),
+    biologicalAge: integer('biological_age'),
+    // Full category breakdown at the time of the snapshot.
+    breakdown: jsonb('breakdown').$type<CategoryScoreSnapshot[]>().notNull().default([]),
+    // The calendar day this snapshot represents (one snapshot per user per day).
+    recordedOn: date('recorded_on').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userDayIdx: uniqueIndex('score_snapshots_user_day_idx').on(table.userId, table.recordedOn),
+  }),
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Relations
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -258,3 +293,5 @@ export type LabUploadRow = typeof labUploads.$inferSelect;
 export type NewLabUploadRow = typeof labUploads.$inferInsert;
 export type HealthGoalRow = typeof healthGoals.$inferSelect;
 export type AppSettingRow = typeof appSettings.$inferSelect;
+export type ScoreSnapshotRow = typeof scoreSnapshots.$inferSelect;
+export type NewScoreSnapshotRow = typeof scoreSnapshots.$inferInsert;

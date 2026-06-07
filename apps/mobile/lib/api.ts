@@ -13,11 +13,13 @@ import type {
   HealthGoalOption,
   HealthProfileInput,
   LoginInput,
+  ScoreHistoryPoint,
   SignupInput,
   SubscriptionPlan,
   SubscriptionWithPlan,
   User,
   UserBiomarkerResult,
+  VitalScore,
 } from '@vital/shared';
 
 import { getAccessToken } from './auth';
@@ -140,6 +142,12 @@ export const biomarkerApi = {
 export const contentApi = {
   get: () => request<{ content: AppContent }>('/app-content', { auth: false }),
   goals: () => request<{ goals: HealthGoalOption[] }>('/health-goals', { auth: false }),
+};
+
+// ── VITAL Score ───────────────────────────────────────────────────────────────
+export const scoreApi = {
+  get: () => request<{ score: VitalScore }>('/score/me'),
+  history: () => request<{ history: ScoreHistoryPoint[] }>('/score/me/history'),
 };
 
 // ── Results ───────────────────────────────────────────────────────────────────

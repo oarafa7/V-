@@ -1,5 +1,5 @@
 /**
- * Dashboard — at-a-glance overview: greeting, overall optimal ring, category
+ * Dashboard — at-a-glance overview: greeting, the VITAL Score hero, category
  * summaries, and prompts to subscribe / book a first test.
  */
 import { useRouter } from 'expo-router';
@@ -7,11 +7,12 @@ import { useEffect, useMemo } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CategoryCard, EmptyState, ProgressRing, SectionHeader } from '@/components/ui';
+import { CategoryCard, EmptyState, ScoreHero, SectionHeader } from '@/components/ui';
 import { colors } from '@/constants/theme';
 import { summariseByCategory } from '@/lib/library-select';
 import { useAuthStore } from '@/lib/store/auth';
 import { useLibraryStore } from '@/lib/store/library';
+import { useScoreStore } from '@/lib/store/score';
 import { useSubscriptionStore } from '@/lib/store/subscription';
 
 export default function Dashboard() {
@@ -22,16 +23,18 @@ export default function Dashboard() {
   const subscription = useSubscriptionStore((s) => s.subscription);
   const subLoaded = useSubscriptionStore((s) => s.loaded);
   const { biomarkers, categories, fetch } = useLibraryStore();
+  const score = useScoreStore((s) => s.score);
+  const history = useScoreStore((s) => s.history);
+  const fetchScore = useScoreStore((s) => s.fetch);
 
   useEffect(() => {
-    if (hasActive()) void fetch();
-  }, [hasActive, fetch]);
+    if (hasActive()) {
+      void fetch();
+      void fetchScore(true);
+    }
+  }, [hasActive, fetch, fetchScore]);
 
   const summaries = useMemo(() => summariseByCategory(biomarkers), [biomarkers]);
-
-  const tested = biomarkers.filter((b) => b.status !== 'untested');
-  const optimalCount = biomarkers.filter((b) => b.status === 'optimal').length;
-  const optimalRatio = tested.length > 0 ? optimalCount / tested.length : 0;
 
   const firstName = user?.full_name?.split(' ')[0] ?? 'there';
 
@@ -62,25 +65,12 @@ export default function Dashboard() {
           </View>
         ) : (
           <>
-            {/* Overall optimal ring */}
-            <View className="mt-6 px-5">
-              <View
-                className="flex-row items-center rounded-lg border p-5"
-                style={{ backgroundColor: colors.surface, borderColor: colors.border }}
-              >
-                <ProgressRing progress={optimalRatio} size={104} sublabel="optimal" />
-                <View className="ml-5 flex-1">
-                  <Text className="font-display" style={{ color: colors.white, fontSize: 22 }}>
-                    {tested.length === 0 ? 'No results yet' : `${optimalCount}/${tested.length} optimal`}
-                  </Text>
-                  <Text className="mt-1 font-body" style={{ color: colors.textDim, fontSize: 13, lineHeight: 18 }}>
-                    {tested.length === 0
-                      ? 'Add a result or book your first test to see your status.'
-                      : 'Share of your tested markers within the optimal range.'}
-                  </Text>
-                </View>
+            {/* VITAL Score hero */}
+            {score ? (
+              <View className="mt-6 px-5">
+                <ScoreHero score={score} history={history} />
               </View>
-            </View>
+            ) : null}
 
             {/* Subscription summary */}
             {subscription ? (

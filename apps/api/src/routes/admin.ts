@@ -40,6 +40,7 @@ import {
 import { getAppContent, setAppContent } from '../lib/content.js';
 import { errorResponse } from '../lib/http.js';
 import { parseLabPdf } from '../lib/lab-pdf.js';
+import { computeUserScore, recordScoreSnapshot } from '../lib/score.js';
 import {
   serializeBiomarker,
   serializeCategory,
@@ -222,11 +223,14 @@ adminRoutes.get('/users/:id', async (c) => {
     .where(eq(labUploads.userId, id))
     .orderBy(desc(labUploads.createdAt));
 
+  const score = results.length > 0 ? await computeUserScore(id) : null;
+
   const detail: AdminUserDetail = {
     user: serializeUser(user),
     subscription: subscriptionPayload,
     results: results.map(serializeResult),
     lab_uploads: uploads.map(serializeLabUpload),
+    score,
   };
 
   return c.json(detail);
@@ -272,6 +276,8 @@ adminRoutes.post('/users/:id/results', validate('json', adminCreateResultSchema)
       source: 'admin',
     })
     .returning();
+
+  await recordScoreSnapshot(userId);
 
   return c.json({ result: serializeResult(row!) }, 201);
 });
@@ -396,6 +402,8 @@ adminRoutes.post(
       .update(labUploads)
       .set({ status: 'confirmed', resultCount: inserted.length, testedAt: tested_at })
       .where(eq(labUploads.id, id));
+
+    await recordScoreSnapshot(upload.userId);
 
     return c.json({ success: true, imported: inserted.length });
   },

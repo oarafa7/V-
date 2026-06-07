@@ -8,6 +8,8 @@ import type {
   BiomarkerCategory,
   HealthGoalOption,
   LabUpload,
+  ScoreBand,
+  ScoreHistoryPoint,
   Subscription,
   SubscriptionPlan,
   User,
@@ -19,6 +21,7 @@ import type {
   BiomarkerRow,
   HealthGoalRow,
   LabUploadRow,
+  ScoreSnapshotRow,
   SubscriptionPlanRow,
   SubscriptionRow,
   UserBiomarkerResultRow,
@@ -158,6 +161,19 @@ export function serializeLabUpload(row: LabUploadRow): LabUpload {
     })),
     result_count: row.resultCount,
     uploaded_by: row.uploadedBy ?? null,
+    created_at: iso(row.createdAt),
+  };
+}
+
+export function serializeScoreSnapshot(row: ScoreSnapshotRow): ScoreHistoryPoint {
+  return {
+    id: row.id,
+    score: row.score,
+    band: row.band as ScoreBand,
+    tested_count: row.testedCount,
+    total_count: row.totalCount,
+    biological_age: row.biologicalAge,
+    recorded_on: row.recordedOn,
     created_at: iso(row.createdAt),
   };
 }

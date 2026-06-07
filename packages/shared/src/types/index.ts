@@ -239,6 +239,7 @@ export interface AdminUserDetail {
   subscription: SubscriptionWithPlan | null;
   results: UserBiomarkerResult[];
   lab_uploads: LabUpload[];
+  score: VitalScore | null;
 }
 
 export interface AdminOverview {
@@ -280,6 +281,49 @@ export const DEFAULT_APP_CONTENT: AppContent = {
     url: '',
   },
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VITAL Score (Phase 2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Score quality band — drives ring color and label. */
+export type ScoreBand = 'excellent' | 'good' | 'fair' | 'attention';
+
+/** Per-category contribution to the overall score. */
+export interface CategoryScore {
+  slug: string;
+  name: string;
+  score: number; // 0..100, average of the category's tested markers
+  band: ScoreBand;
+  tested: number; // markers with a result in this category
+  total: number; // active markers in this category
+}
+
+/** The computed VITAL Score for a user at a point in time. */
+export interface VitalScore {
+  score: number; // 0..100 overall (category-weighted)
+  band: ScoreBand;
+  tested_count: number; // markers with a result
+  total_count: number; // active markers considered
+  coverage: number; // tested_count / total_count, 0..1
+  category_scores: CategoryScore[];
+  chronological_age: number | null; // from date_of_birth, if known
+  biological_age: number | null; // heuristic estimate, if age known
+  age_delta: number | null; // biological_age − chronological_age
+  computed_at: ISODateTimeString;
+}
+
+/** A persisted snapshot of the score, for the history trend. */
+export interface ScoreHistoryPoint {
+  id: UUID;
+  score: number;
+  band: ScoreBand;
+  tested_count: number;
+  total_count: number;
+  biological_age: number | null;
+  recorded_on: ISODateString;
+  created_at: ISODateTimeString;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // API envelopes

@@ -60,7 +60,7 @@ export default function UserDetailPage() {
   if (loading) return <Spinner />;
   if (!detail) return <div className="text-inkSoft">User not found.</div>;
 
-  const { user, subscription, results, lab_uploads } = detail;
+  const { user, subscription, results, lab_uploads, score } = detail;
 
   const deleteResult = async (rid: string) => {
     if (!confirm('Delete this result?')) return;
@@ -146,6 +146,45 @@ export default function UserDetailPage() {
           )}
         </Card>
       </div>
+
+      {/* VITAL Score */}
+      {score && score.tested_count > 0 ? (
+        <Card className="mt-4 p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="font-display text-lg font-bold text-ink">VITAL Score</h3>
+              <div className="mt-1 text-sm text-inkSoft">
+                {score.tested_count} of {score.total_count} markers tested
+                {score.biological_age != null
+                  ? ` · bio age ${score.biological_age}${
+                      score.age_delta != null && score.age_delta !== 0
+                        ? ` (${score.age_delta < 0 ? '−' : '+'}${Math.abs(score.age_delta)}y)`
+                        : ''
+                    }`
+                  : ''}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="font-display text-4xl font-extrabold text-ink">{score.score}</div>
+              <div className="text-xs uppercase tracking-wide text-inkMuted">{score.band}</div>
+            </div>
+          </div>
+          {score.category_scores.length > 0 ? (
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {score.category_scores
+                .filter((c) => c.tested > 0)
+                .map((c) => (
+                  <div key={c.slug} className="flex items-center justify-between text-sm">
+                    <span className="text-inkSoft">{c.name}</span>
+                    <span className="font-medium text-ink">
+                      {c.score} <span className="text-inkMuted">({c.tested}/{c.total})</span>
+                    </span>
+                  </div>
+                ))}
+            </div>
+          ) : null}
+        </Card>
+      ) : null}
 
       {/* Lab upload */}
       <div className="mt-8">
