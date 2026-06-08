@@ -11,7 +11,11 @@ import type {
   AiInsightType,
   Biomarker,
   BiomarkerCategory,
+  BiomarkerStatus,
+  EvidenceLevel,
   HealthGoalOption,
+  Intervention,
+  InterventionCategory,
   LabUpload,
   ScoreBand,
   ScoreHistoryPoint,
@@ -27,6 +31,7 @@ import type {
   BiomarkerCategoryRow,
   BiomarkerRow,
   HealthGoalRow,
+  InterventionRow,
   LabUploadRow,
   ScoreSnapshotRow,
   SubscriptionPlanRow,
@@ -196,6 +201,24 @@ export function serializeAiChatMessage(row: AiChatMessageRow): AiChatMessage {
     role: row.role as AiChatMessage['role'],
     content: row.content,
     created_at: iso(row.createdAt),
+  };
+}
+
+export function serializeIntervention(row: InterventionRow): Intervention {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    category: row.category as InterventionCategory,
+    summary: row.summary,
+    detail: row.detail,
+    dosage: row.dosage,
+    evidence_level: row.evidenceLevel as EvidenceLevel,
+    url: row.url,
+    target_biomarker_slugs: row.targetBiomarkerSlugs ?? [],
+    trigger_statuses: (row.triggerStatuses ?? []) as BiomarkerStatus[],
+    is_active: row.isActive,
+    display_order: row.displayOrder,
   };
 }
 

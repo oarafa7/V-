@@ -427,6 +427,42 @@ export interface AiUsageStats {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Interventions / Recommendations (Phase 2 — supplement & protocol guidance)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type InterventionCategory = 'supplement' | 'nutrition' | 'lifestyle' | 'retest';
+export type EvidenceLevel = 'strong' | 'moderate' | 'limited';
+
+/** An admin-managed catalog entry that can be recommended to users. */
+export interface Intervention {
+  id: UUID;
+  name: string;
+  slug: string;
+  category: InterventionCategory;
+  summary: string;
+  detail: string;
+  dosage: string;
+  evidence_level: EvidenceLevel;
+  url: string;
+  target_biomarker_slugs: string[]; // markers this addresses
+  trigger_statuses: BiomarkerStatus[]; // statuses that surface it
+  is_active: boolean;
+  display_order: number;
+}
+
+export interface RecommendationMarker {
+  slug: string;
+  name: string;
+  status: BiomarkerStatus;
+}
+
+/** An intervention surfaced for a user, with the markers that triggered it. */
+export interface RecommendedIntervention {
+  intervention: Intervention;
+  matched: RecommendationMarker[];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // API envelopes
 // ─────────────────────────────────────────────────────────────────────────────
 

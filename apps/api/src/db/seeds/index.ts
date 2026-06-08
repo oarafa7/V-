@@ -15,9 +15,11 @@ import {
   biomarkerCategories,
   biomarkers,
   healthGoals,
+  interventions,
   subscriptionPlans,
 } from '../schema.js';
 import { HEALTH_GOAL_SEED } from './goals.js';
+import { INTERVENTION_SEED } from './interventions.js';
 import { PLAN_SEED } from './plans.js';
 
 async function seedCategories() {
@@ -151,6 +153,35 @@ async function seedGoals() {
   }
 }
 
+async function seedInterventions() {
+  for (const iv of INTERVENTION_SEED) {
+    const [existing] = await db
+      .select({ id: interventions.id })
+      .from(interventions)
+      .where(eq(interventions.slug, iv.slug))
+      .limit(1);
+    const values = {
+      name: iv.name,
+      slug: iv.slug,
+      category: iv.category,
+      summary: iv.summary,
+      detail: iv.detail,
+      dosage: iv.dosage,
+      evidenceLevel: iv.evidence_level,
+      url: iv.url,
+      targetBiomarkerSlugs: iv.target_biomarker_slugs,
+      triggerStatuses: iv.trigger_statuses,
+      isActive: iv.is_active,
+      displayOrder: iv.display_order,
+    };
+    if (existing) {
+      await db.update(interventions).set(values).where(eq(interventions.id, existing.id));
+    } else {
+      await db.insert(interventions).values(values);
+    }
+  }
+}
+
 async function seedContent() {
   // Only set defaults for keys that don't exist yet (never clobber admin edits).
   const entries: { key: string; value: unknown }[] = [
@@ -182,6 +213,10 @@ async function main() {
   console.log('Seeding health goals…');
   await seedGoals();
   console.log(`  ${HEALTH_GOAL_SEED.length} goals.`);
+
+  console.log('Seeding interventions…');
+  await seedInterventions();
+  console.log(`  ${INTERVENTION_SEED.length} interventions.`);
 
   console.log('Seeding app content defaults…');
   await seedContent();

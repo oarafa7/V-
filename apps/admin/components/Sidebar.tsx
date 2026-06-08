@@ -13,6 +13,7 @@ const NAV = [
   { href: '/categories', label: 'Categories' },
   { href: '/goals', label: 'Health Goals' },
   { href: '/content', label: 'App Content' },
+  { href: '/interventions', label: 'Interventions' },
   { href: '/ai', label: 'AI Intelligence' },
 ];
 

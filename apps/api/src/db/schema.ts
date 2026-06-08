@@ -276,6 +276,26 @@ export const aiChatMessages = pgTable('ai_chat_messages', {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// interventions (Phase 2 — admin-managed supplement / protocol catalog)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const interventions = pgTable('interventions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  category: text('category').notNull(), // supplement | nutrition | lifestyle | retest
+  summary: text('summary').notNull().default(''),
+  detail: text('detail').notNull().default(''),
+  dosage: text('dosage').notNull().default(''),
+  evidenceLevel: text('evidence_level').notNull().default('moderate'),
+  url: text('url').notNull().default(''),
+  targetBiomarkerSlugs: text('target_biomarker_slugs').array().notNull().default([]),
+  triggerStatuses: text('trigger_statuses').array().notNull().default([]),
+  isActive: boolean('is_active').notNull().default(true),
+  displayOrder: integer('display_order').notNull().default(0),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Relations
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -337,3 +357,4 @@ export type ScoreSnapshotRow = typeof scoreSnapshots.$inferSelect;
 export type NewScoreSnapshotRow = typeof scoreSnapshots.$inferInsert;
 export type AiInsightRow = typeof aiInsights.$inferSelect;
 export type AiChatMessageRow = typeof aiChatMessages.$inferSelect;
+export type InterventionRow = typeof interventions.$inferSelect;

@@ -16,6 +16,7 @@ import type {
   HealthGoalOption,
   HealthProfileInput,
   LoginInput,
+  RecommendedIntervention,
   ScoreHistoryPoint,
   SignupInput,
   SubscriptionPlan,
@@ -165,6 +166,11 @@ export const aiApi = {
   chatHistory: () => request<{ messages: AiChatMessage[] }>('/ai/chat/me'),
   sendChat: (message: string) =>
     request<{ reply: string }>('/ai/chat/me', { method: 'POST', body: { message } }),
+};
+
+// ── Recommendations (supplement / protocol guidance) ───────────────────────────
+export const recommendationApi = {
+  me: () => request<{ recommendations: RecommendedIntervention[] }>('/recommendations/me'),
 };
 
 // ── Results ───────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 'use client';
 
-import type { AdminUserDetail, AiInsight, Biomarker, LabUpload, ParsedLabRow, SubscriptionPlan } from '@vital/shared';
+import type { AdminUserDetail, AiInsight, Biomarker, LabUpload, ParsedLabRow, RecommendedIntervention, SubscriptionPlan } from '@vital/shared';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -209,6 +209,9 @@ export default function UserDetailPage() {
       {/* AI insights */}
       <UserAiCard userId={id} />
 
+      {/* Recommendations */}
+      <UserRecsCard userId={id} />
+
       {/* Lab upload */}
       <div className="mt-8">
         <h2 className="mb-3 font-display text-xl font-bold text-ink">Lab results</h2>
@@ -364,6 +367,42 @@ function UserAiCard({ userId }: { userId: string }) {
                 </div>
               </div>
               <div className="mt-2 whitespace-pre-wrap text-sm text-inkSoft">{i.body}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function UserRecsCard({ userId }: { userId: string }) {
+  const [recs, setRecs] = useState<RecommendedIntervention[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .userRecommendations(userId)
+      .then((r) => setRecs(r.recommendations))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  return (
+    <Card className="mt-4 p-5">
+      <h3 className="mb-3 font-display text-lg font-bold text-ink">Recommendations</h3>
+      {loading ? (
+        <div className="text-sm text-inkSoft">Loading…</div>
+      ) : recs.length === 0 ? (
+        <div className="text-sm text-inkMuted">No interventions triggered by this user&apos;s results.</div>
+      ) : (
+        <div className="space-y-2">
+          {recs.map(({ intervention: iv, matched }) => (
+            <div key={iv.id} className="flex items-start justify-between rounded-lg border border-line p-3">
+              <div>
+                <div className="font-medium text-ink">{iv.name}</div>
+                <div className="text-xs capitalize text-inkMuted">{iv.category} · {iv.evidence_level} evidence</div>
+              </div>
+              <div className="text-right text-xs text-inkSoft">{matched.map((m) => m.name).join(', ')}</div>
             </div>
           ))}
         </div>

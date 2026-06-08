@@ -43,6 +43,13 @@
       "when": 1780826454450,
       "tag": "0005_ai_intelligence",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780955040820,
+      "tag": "0006_interventions",
+      "breakpoints": true
     }
   ]
 }

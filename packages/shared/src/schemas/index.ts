@@ -308,3 +308,27 @@ export const chatInputSchema = z.object({
   message: z.string().min(1).max(2000),
 });
 export type ChatInput = z.infer<typeof chatInputSchema>;
+
+// Interventions / recommendations (admin)
+const biomarkerStatusEnum = z.enum(['optimal', 'suboptimal', 'alert', 'untested']);
+export const interventionInputSchema = z.object({
+  name: z.string().min(1).max(120),
+  slug: z
+    .string()
+    .min(1)
+    .max(120)
+    .regex(/^[a-z0-9-]+$/, 'lowercase letters, numbers and hyphens only'),
+  category: z.enum(['supplement', 'nutrition', 'lifestyle', 'retest']),
+  summary: z.string().max(400).default(''),
+  detail: z.string().max(4000).default(''),
+  dosage: z.string().max(200).default(''),
+  evidence_level: z.enum(['strong', 'moderate', 'limited']).default('moderate'),
+  url: z.string().max(300).default(''),
+  target_biomarker_slugs: z.array(z.string()).default([]),
+  trigger_statuses: z.array(biomarkerStatusEnum).min(1).default(['suboptimal', 'alert']),
+  is_active: z.boolean().default(true),
+  display_order: z.number().int().default(0),
+});
+export type InterventionInput = z.infer<typeof interventionInputSchema>;
+export const interventionUpdateSchema = interventionInputSchema.partial();
+export type InterventionUpdateInput = z.infer<typeof interventionUpdateSchema>;

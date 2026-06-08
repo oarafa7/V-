@@ -23,9 +23,13 @@ import type {
   HealthGoalInput,
   HealthGoalOption,
   HealthGoalUpdateInput,
+  Intervention,
+  InterventionInput,
+  InterventionUpdateInput,
   LabUpload,
   PlanInput,
   PlanUpdateInput,
+  RecommendedIntervention,
   Subscription,
   SubscriptionPlan,
   UpdateSubscriptionInput,
@@ -218,4 +222,17 @@ export const api = {
       { method: 'POST' },
     ),
   aiUsage: () => request<{ usage: AiUsageStats }>('/admin/ai/usage'),
+
+  // interventions (supplement / protocol catalog)
+  interventions: () => request<{ interventions: Intervention[] }>('/admin/interventions'),
+  createIntervention: (body: InterventionInput) =>
+    request<{ intervention: Intervention }>('/admin/interventions', { method: 'POST', body }),
+  updateIntervention: (id: string, body: InterventionUpdateInput) =>
+    request<{ intervention: Intervention }>(`/admin/interventions/${id}`, { method: 'PUT', body }),
+  deleteIntervention: (id: string) =>
+    request<{ success: boolean }>(`/admin/interventions/${id}`, { method: 'DELETE' }),
+  userRecommendations: (userId: string) =>
+    request<{ recommendations: RecommendedIntervention[] }>(
+      `/admin/users/${userId}/recommendations`,
+    ),
 };

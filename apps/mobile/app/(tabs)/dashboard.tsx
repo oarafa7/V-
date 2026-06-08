@@ -78,25 +78,23 @@ export default function Dashboard() {
               </View>
             ) : null}
 
-            {/* AI entry */}
-            {aiEnabled ? (
-              <View className="mt-4 px-5">
-                <Pressable
+            {/* AI + Recommendations entries */}
+            <View className="mt-4 px-5" style={{ gap: 10 }}>
+              {aiEnabled ? (
+                <DashCard
+                  icon="Sparkles"
+                  title="VITAL AI"
+                  subtitle="Insights & answers from your results"
                   onPress={() => router.push('/insights')}
-                  className="flex-row items-center rounded-lg border p-4"
-                  style={{ backgroundColor: colors.surface, borderColor: colors.border }}
-                >
-                  <LucideIcon name="Sparkles" size={22} color={colors.gold} />
-                  <View className="ml-3 flex-1">
-                    <Text className="font-display" style={{ color: colors.white, fontSize: 16 }}>VITAL AI</Text>
-                    <Text className="font-body" style={{ color: colors.textDim, fontSize: 12 }}>
-                      Insights & answers from your results
-                    </Text>
-                  </View>
-                  <LucideIcon name="ChevronRight" size={20} color={colors.textDim} />
-                </Pressable>
-              </View>
-            ) : null}
+                />
+              ) : null}
+              <DashCard
+                icon="ClipboardList"
+                title="Recommendations"
+                subtitle="Supplements & lifestyle tailored to you"
+                onPress={() => router.push('/recommendations')}
+              />
+            </View>
 
             {/* Subscription summary */}
             {subscription ? (
@@ -153,5 +151,32 @@ export default function Dashboard() {
         )}
       </ScrollView>
     </View>
+  );
+}
+
+function DashCard({
+  icon,
+  title,
+  subtitle,
+  onPress,
+}: {
+  icon: string;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center rounded-lg border p-4"
+      style={{ backgroundColor: colors.surface, borderColor: colors.border }}
+    >
+      <LucideIcon name={icon} size={22} color={colors.gold} />
+      <View className="ml-3 flex-1">
+        <Text className="font-display" style={{ color: colors.white, fontSize: 16 }}>{title}</Text>
+        <Text className="font-body" style={{ color: colors.textDim, fontSize: 12 }}>{subtitle}</Text>
+      </View>
+      <LucideIcon name="ChevronRight" size={20} color={colors.textDim} />
+    </Pressable>
   );
 }

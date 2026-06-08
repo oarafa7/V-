@@ -20,6 +20,8 @@ import {
   grantSubscriptionSchema,
   healthGoalInputSchema,
   healthGoalUpdateSchema,
+  interventionInputSchema,
+  interventionUpdateSchema,
   planInputSchema,
   planUpdateSchema,
   updateSubscriptionSchema,
@@ -34,6 +36,7 @@ import {
   biomarkerCategories,
   biomarkers,
   healthGoals,
+  interventions,
   labUploads,
   subscriptionPlans,
   subscriptions,
@@ -43,6 +46,7 @@ import {
 import { generateAndStoreInsights } from '../lib/ai.js';
 import { getAiConfig, setAiConfig } from '../lib/ai-config.js';
 import { getAppContent, setAppContent } from '../lib/content.js';
+import { computeUserRecommendations } from '../lib/recommendations.js';
 import { errorResponse } from '../lib/http.js';
 import { parseLabPdf } from '../lib/lab-pdf.js';
 import { computeUserScore, recordScoreSnapshot } from '../lib/score.js';
@@ -50,6 +54,7 @@ import {
   serializeAiInsight,
   serializeBiomarker,
   serializeCategory,
+  serializeIntervention,
   serializeHealthGoal,
   serializeLabUpload,
   serializePlan,
@@ -854,4 +859,76 @@ adminRoutes.get('/ai/usage', async (c) => {
       chat_message_count: Number(chat?.count ?? 0),
     },
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Interventions (supplement / protocol catalog)
+// ─────────────────────────────────────────────────────────────────────────────
+
+adminRoutes.get('/interventions', async (c) => {
+  const rows = await db.select().from(interventions).orderBy(asc(interventions.displayOrder));
+  return c.json({ interventions: rows.map(serializeIntervention) });
+});
+
+adminRoutes.post('/interventions', validate('json', interventionInputSchema), async (c) => {
+  const body = c.req.valid('json');
+  const [row] = await db
+    .insert(interventions)
+    .values({
+      name: body.name,
+      slug: body.slug,
+      category: body.category,
+      summary: body.summary,
+      detail: body.detail,
+      dosage: body.dosage,
+      evidenceLevel: body.evidence_level,
+      url: body.url,
+      targetBiomarkerSlugs: body.target_biomarker_slugs,
+      triggerStatuses: body.trigger_statuses,
+      isActive: body.is_active,
+      displayOrder: body.display_order,
+    })
+    .returning();
+  return c.json({ intervention: serializeIntervention(row!) }, 201);
+});
+
+adminRoutes.put('/interventions/:id', validate('json', interventionUpdateSchema), async (c) => {
+  const id = c.req.param('id');
+  const b = c.req.valid('json');
+  const [row] = await db
+    .update(interventions)
+    .set({
+      ...(b.name !== undefined ? { name: b.name } : {}),
+      ...(b.slug !== undefined ? { slug: b.slug } : {}),
+      ...(b.category !== undefined ? { category: b.category } : {}),
+      ...(b.summary !== undefined ? { summary: b.summary } : {}),
+      ...(b.detail !== undefined ? { detail: b.detail } : {}),
+      ...(b.dosage !== undefined ? { dosage: b.dosage } : {}),
+      ...(b.evidence_level !== undefined ? { evidenceLevel: b.evidence_level } : {}),
+      ...(b.url !== undefined ? { url: b.url } : {}),
+      ...(b.target_biomarker_slugs !== undefined
+        ? { targetBiomarkerSlugs: b.target_biomarker_slugs }
+        : {}),
+      ...(b.trigger_statuses !== undefined ? { triggerStatuses: b.trigger_statuses } : {}),
+      ...(b.is_active !== undefined ? { isActive: b.is_active } : {}),
+      ...(b.display_order !== undefined ? { displayOrder: b.display_order } : {}),
+    })
+    .where(eq(interventions.id, id))
+    .returning();
+  if (!row) return errorResponse(c, 'not_found', 'Intervention not found');
+  return c.json({ intervention: serializeIntervention(row) });
+});
+
+adminRoutes.delete('/interventions/:id', async (c) => {
+  const id = c.req.param('id');
+  const [deleted] = await db.delete(interventions).where(eq(interventions.id, id)).returning();
+  if (!deleted) return errorResponse(c, 'not_found', 'Intervention not found');
+  return c.json({ success: true });
+});
+
+// A user's computed recommendations (read-only, for admin review).
+adminRoutes.get('/users/:id/recommendations', async (c) => {
+  const userId = c.req.param('id');
+  const recommendations = await computeUserRecommendations(userId);
+  return c.json({ recommendations });
 });
