@@ -13,6 +13,7 @@ import type {
   AiUsageStats,
   AppContent,
   AppContentInput,
+  BroadcastInput,
   Biomarker,
   BiomarkerCategory,
   BiomarkerInput,
@@ -27,6 +28,9 @@ import type {
   InterventionInput,
   InterventionUpdateInput,
   LabUpload,
+  NotificationConfig,
+  NotificationConfigInput,
+  NotificationStats,
   PlanInput,
   PlanUpdateInput,
   RecommendedIntervention,
@@ -235,4 +239,15 @@ export const api = {
     request<{ recommendations: RecommendedIntervention[] }>(
       `/admin/users/${userId}/recommendations`,
     ),
+
+  // notifications & engagement
+  notificationConfig: () => request<{ config: NotificationConfig }>('/admin/notification-config'),
+  saveNotificationConfig: (body: NotificationConfigInput) =>
+    request<{ config: NotificationConfig }>('/admin/notification-config', { method: 'PUT', body }),
+  broadcast: (body: BroadcastInput) =>
+    request<{ success: boolean; sent: number }>('/admin/notifications/broadcast', {
+      method: 'POST',
+      body,
+    }),
+  notificationStats: () => request<{ stats: NotificationStats }>('/admin/notifications/stats'),
 };

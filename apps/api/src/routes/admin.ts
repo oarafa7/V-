@@ -20,13 +20,15 @@ import {
   grantSubscriptionSchema,
   healthGoalInputSchema,
   healthGoalUpdateSchema,
+  broadcastSchema,
   interventionInputSchema,
   interventionUpdateSchema,
+  notificationConfigSchema,
   planInputSchema,
   planUpdateSchema,
   updateSubscriptionSchema,
 } from '@vital/shared';
-import { and, asc, desc, eq, gt, ilike, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 
 import { db } from '../db/client.js';
@@ -35,9 +37,11 @@ import {
   aiInsights,
   biomarkerCategories,
   biomarkers,
+  deviceTokens,
   healthGoals,
   interventions,
   labUploads,
+  notifications,
   subscriptionPlans,
   subscriptions,
   userBiomarkerResults,
@@ -46,6 +50,8 @@ import {
 import { generateAndStoreInsights } from '../lib/ai.js';
 import { getAiConfig, setAiConfig } from '../lib/ai-config.js';
 import { getAppContent, setAppContent } from '../lib/content.js';
+import { getNotificationConfig, setNotificationConfig } from '../lib/notification-config.js';
+import { generateUserNotifications } from '../lib/notifications.js';
 import { computeUserRecommendations } from '../lib/recommendations.js';
 import { errorResponse } from '../lib/http.js';
 import { parseLabPdf } from '../lib/lab-pdf.js';
@@ -931,4 +937,58 @@ adminRoutes.get('/users/:id/recommendations', async (c) => {
   const userId = c.req.param('id');
   const recommendations = await computeUserRecommendations(userId);
   return c.json({ recommendations });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Notifications & engagement
+// ─────────────────────────────────────────────────────────────────────────────
+
+adminRoutes.get('/notification-config', async (c) => {
+  const config = await getNotificationConfig();
+  return c.json({ config });
+});
+
+adminRoutes.put('/notification-config', validate('json', notificationConfigSchema), async (c) => {
+  const config = await setNotificationConfig(c.req.valid('json'));
+  return c.json({ config });
+});
+
+// Broadcast an announcement to every user.
+adminRoutes.post('/notifications/broadcast', validate('json', broadcastSchema), async (c) => {
+  const body = c.req.valid('json');
+  const allUsers = await db.select({ id: users.id }).from(users);
+  if (allUsers.length === 0) return c.json({ success: true, sent: 0 });
+  const stamp = new Date().toISOString();
+  await db.insert(notifications).values(
+    allUsers.map((u) => ({
+      userId: u.id,
+      type: 'announcement' as const,
+      severity: body.severity,
+      title: body.title,
+      body: body.body,
+      dedupeKey: `announcement:${stamp}`,
+    })),
+  );
+  return c.json({ success: true, sent: allUsers.length });
+});
+
+// Trigger system-alert generation for a user.
+adminRoutes.post('/users/:id/notifications/generate', async (c) => {
+  const userId = c.req.param('id');
+  const [user] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1);
+  if (!user) return errorResponse(c, 'not_found', 'User not found');
+  await generateUserNotifications(userId);
+  return c.json({ success: true });
+});
+
+adminRoutes.get('/notifications/stats', async (c) => {
+  const [total] = await db.select({ n: sql<number>`count(*)::int` }).from(notifications);
+  const [unread] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(notifications)
+    .where(isNull(notifications.readAt));
+  const [devices] = await db.select({ n: sql<number>`count(*)::int` }).from(deviceTokens);
+  return c.json({
+    stats: { total: total?.n ?? 0, unread: unread?.n ?? 0, device_count: devices?.n ?? 0 },
+  });
 });

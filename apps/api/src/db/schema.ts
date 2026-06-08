@@ -296,6 +296,46 @@ export const interventions = pgTable('interventions', {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// notifications (Phase 2 — in-app alerts & announcements)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    type: text('type').notNull(), // alert | retest | score | insight | announcement | system
+    severity: text('severity').notNull().default('info'),
+    title: text('title').notNull(),
+    body: text('body').notNull().default(''),
+    link: text('link'),
+    // Idempotency key so system alerts aren't duplicated (null for one-offs).
+    dedupeKey: text('dedupe_key'),
+    readAt: timestamp('read_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userDedupeIdx: uniqueIndex('notifications_user_dedupe_idx').on(table.userId, table.dedupeKey),
+  }),
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// device_tokens (Phase 2 — Expo push registration)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const deviceTokens = pgTable('device_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(),
+  platform: text('platform').notNull().default('ios'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Relations
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -358,3 +398,5 @@ export type NewScoreSnapshotRow = typeof scoreSnapshots.$inferInsert;
 export type AiInsightRow = typeof aiInsights.$inferSelect;
 export type AiChatMessageRow = typeof aiChatMessages.$inferSelect;
 export type InterventionRow = typeof interventions.$inferSelect;
+export type NotificationRow = typeof notifications.$inferSelect;
+export type DeviceTokenRow = typeof deviceTokens.$inferSelect;

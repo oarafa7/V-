@@ -9,6 +9,7 @@ import type {
   AiStatus,
   ApiError as ApiErrorEnvelope,
   AppContent,
+  AppNotification,
   BiomarkerListResponse,
   BiomarkerWithResult,
   CreateResultInput,
@@ -171,6 +172,16 @@ export const aiApi = {
 // ── Recommendations (supplement / protocol guidance) ───────────────────────────
 export const recommendationApi = {
   me: () => request<{ recommendations: RecommendedIntervention[] }>('/recommendations/me'),
+};
+
+// ── Notifications & engagement ─────────────────────────────────────────────────
+export const notificationApi = {
+  feed: () =>
+    request<{ notifications: AppNotification[]; unread_count: number }>('/notifications/me'),
+  markRead: (ids?: string[]) =>
+    request<{ success: boolean }>('/notifications/me/read', { method: 'POST', body: { ids } }),
+  registerDevice: (token: string, platform: 'ios' | 'android' | 'web') =>
+    request<{ success: boolean }>('/devices', { method: 'POST', body: { token, platform } }),
 };
 
 // ── Results ───────────────────────────────────────────────────────────────────

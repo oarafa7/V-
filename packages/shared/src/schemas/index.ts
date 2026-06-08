@@ -332,3 +332,31 @@ export const interventionInputSchema = z.object({
 export type InterventionInput = z.infer<typeof interventionInputSchema>;
 export const interventionUpdateSchema = interventionInputSchema.partial();
 export type InterventionUpdateInput = z.infer<typeof interventionUpdateSchema>;
+
+// Notifications & engagement (admin + user)
+export const notificationConfigSchema = z.object({
+  out_of_range_alerts: z.boolean(),
+  retest_reminders: z.boolean(),
+  retest_cadence_months: z.number().int().min(1).max(24),
+  score_drop_alerts: z.boolean(),
+  score_drop_threshold: z.number().int().min(1).max(50),
+});
+export type NotificationConfigInput = z.infer<typeof notificationConfigSchema>;
+
+export const broadcastSchema = z.object({
+  title: z.string().min(1).max(120),
+  body: z.string().min(1).max(600),
+  severity: z.enum(['info', 'warning', 'critical']).default('info'),
+});
+export type BroadcastInput = z.infer<typeof broadcastSchema>;
+
+export const registerDeviceSchema = z.object({
+  token: z.string().min(1).max(300),
+  platform: z.enum(['ios', 'android', 'web']).default('ios'),
+});
+export type RegisterDeviceInput = z.infer<typeof registerDeviceSchema>;
+
+export const markReadSchema = z.object({
+  ids: z.array(z.string()).optional(),
+});
+export type MarkReadInput = z.infer<typeof markReadSchema>;

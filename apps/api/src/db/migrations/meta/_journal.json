@@ -50,6 +50,13 @@
       "when": 1780955040820,
       "tag": "0006_interventions",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1780957838730,
+      "tag": "0007_notifications",
+      "breakpoints": true
     }
   ]
 }

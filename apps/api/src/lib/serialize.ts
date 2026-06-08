@@ -9,6 +9,7 @@ import type {
   AiInsightSource,
   AiInsightStatus,
   AiInsightType,
+  AppNotification,
   Biomarker,
   BiomarkerCategory,
   BiomarkerStatus,
@@ -33,6 +34,7 @@ import type {
   HealthGoalRow,
   InterventionRow,
   LabUploadRow,
+  NotificationRow,
   ScoreSnapshotRow,
   SubscriptionPlanRow,
   SubscriptionRow,
@@ -219,6 +221,20 @@ export function serializeIntervention(row: InterventionRow): Intervention {
     trigger_statuses: (row.triggerStatuses ?? []) as BiomarkerStatus[],
     is_active: row.isActive,
     display_order: row.displayOrder,
+  };
+}
+
+export function serializeNotification(row: NotificationRow): AppNotification {
+  return {
+    id: row.id,
+    user_id: row.userId,
+    type: row.type as AppNotification['type'],
+    severity: row.severity as AppNotification['severity'],
+    title: row.title,
+    body: row.body,
+    link: row.link,
+    read_at: row.readAt ? iso(row.readAt) : null,
+    created_at: iso(row.createdAt),
   };
 }
 

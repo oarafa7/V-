@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryCard, EmptyState, LucideIcon, ScoreHero, SectionHeader } from '@/components/ui';
 import { colors } from '@/constants/theme';
-import { aiApi } from '@/lib/api';
+import { aiApi, notificationApi } from '@/lib/api';
 import { summariseByCategory } from '@/lib/library-select';
 import { useAuthStore } from '@/lib/store/auth';
 import { useLibraryStore } from '@/lib/store/library';
@@ -28,11 +28,13 @@ export default function Dashboard() {
   const history = useScoreStore((s) => s.history);
   const fetchScore = useScoreStore((s) => s.fetch);
   const [aiEnabled, setAiEnabled] = useState(false);
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     if (hasActive()) {
       void fetch();
       void fetchScore(true);
+      notificationApi.feed().then((r) => setUnread(r.unread_count)).catch(() => {});
     }
   }, [hasActive, fetch, fetchScore]);
 
@@ -50,13 +52,26 @@ export default function Dashboard() {
         contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="px-5">
-          <Text className="font-mono uppercase tracking-widest" style={{ color: colors.gold, fontSize: 12 }}>
-            Welcome back
-          </Text>
-          <Text className="mt-1 font-display" style={{ color: colors.white, fontSize: 34 }}>
-            {firstName}
-          </Text>
+        <View className="flex-row items-start justify-between px-5">
+          <View>
+            <Text className="font-mono uppercase tracking-widest" style={{ color: colors.gold, fontSize: 12 }}>
+              Welcome back
+            </Text>
+            <Text className="mt-1 font-display" style={{ color: colors.white, fontSize: 34 }}>
+              {firstName}
+            </Text>
+          </View>
+          <Pressable onPress={() => router.push('/notifications')} hitSlop={10} className="mt-2">
+            <LucideIcon name="Bell" size={24} color={colors.white} />
+            {unread > 0 ? (
+              <View
+                className="absolute items-center justify-center rounded-full"
+                style={{ top: -6, right: -6, minWidth: 18, height: 18, paddingHorizontal: 4, backgroundColor: colors.red }}
+              >
+                <Text className="font-mono" style={{ color: colors.white, fontSize: 10 }}>{unread > 9 ? '9+' : unread}</Text>
+              </View>
+            ) : null}
+          </Pressable>
         </View>
 
         {subLoaded && !hasActive() ? (

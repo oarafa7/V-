@@ -18,6 +18,7 @@ import { biomarkerRoutes } from './routes/biomarkers.js';
 import { contentRoutes } from './routes/content.js';
 import { paymentRoutes } from './routes/payments.js';
 import { aiRoutes } from './routes/ai.js';
+import { notificationRoutes } from './routes/notifications.js';
 import { recommendationRoutes } from './routes/recommendations.js';
 import { resultRoutes } from './routes/results.js';
 import { scoreRoutes } from './routes/score.js';
@@ -44,6 +45,7 @@ v1.route('/', contentRoutes);
 v1.route('/', scoreRoutes);
 v1.route('/', aiRoutes);
 v1.route('/', recommendationRoutes);
+v1.route('/', notificationRoutes);
 
 app.route('/api/v1', v1);
 

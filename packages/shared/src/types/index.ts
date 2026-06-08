@@ -463,6 +463,59 @@ export interface RecommendedIntervention {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Notifications & engagement (Phase 2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type NotificationType =
+  | 'alert'
+  | 'retest'
+  | 'score'
+  | 'insight'
+  | 'announcement'
+  | 'system';
+export type NotificationSeverity = 'info' | 'warning' | 'critical';
+
+export interface AppNotification {
+  id: UUID;
+  user_id: UUID;
+  type: NotificationType;
+  severity: NotificationSeverity;
+  title: string;
+  body: string;
+  link: string | null; // optional in-app deep link, e.g. "biomarker/<id>"
+  read_at: ISODateTimeString | null;
+  created_at: ISODateTimeString;
+}
+
+export interface NotificationFeed {
+  notifications: AppNotification[];
+  unread_count: number;
+}
+
+/** Admin-controlled rules for system-generated alerts. */
+export interface NotificationConfig {
+  out_of_range_alerts: boolean;
+  retest_reminders: boolean;
+  retest_cadence_months: number;
+  score_drop_alerts: boolean;
+  score_drop_threshold: number; // points of VITAL Score
+}
+
+export const DEFAULT_NOTIFICATION_CONFIG: NotificationConfig = {
+  out_of_range_alerts: true,
+  retest_reminders: true,
+  retest_cadence_months: 6,
+  score_drop_alerts: true,
+  score_drop_threshold: 5,
+};
+
+export interface NotificationStats {
+  total: number;
+  unread: number;
+  device_count: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // API envelopes
 // ─────────────────────────────────────────────────────────────────────────────
 
