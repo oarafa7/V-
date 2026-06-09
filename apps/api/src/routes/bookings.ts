@@ -14,6 +14,7 @@ import { db } from '../db/client.js';
 import { bookings, serviceAreas } from '../db/schema.js';
 import { cancelBooking, createBooking, resolveRange } from '../lib/booking.js';
 import { errorResponse } from '../lib/http.js';
+import { notifyUser } from '../lib/notifications.js';
 import { serializeArea, serializeBooking } from '../lib/serialize.js';
 import { type AuthVariables, requireAuth } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscription.js';
@@ -60,12 +61,32 @@ bookingRoutes.get('/bookings/me', async (c) => {
 bookingRoutes.post('/bookings', validate('json', createBookingSchema), async (c) => {
   const userId = c.get('userId');
   const { booking, areaName } = await createBooking(userId, c.req.valid('json'));
+
+  await notifyUser(userId, {
+    type: 'booking',
+    severity: 'info',
+    title: 'Test booked ✓',
+    body: `Your home test in ${areaName} is confirmed for ${booking.date}, ${booking.startTime}–${booking.endTime}.`,
+    link: '/booking',
+    dedupeKey: `booking-confirmed:${booking.id}`,
+  });
+
   return c.json({ booking: serializeBooking(booking, areaName) }, 201);
 });
 
 bookingRoutes.post('/bookings/:id/cancel', async (c) => {
   const userId = c.get('userId');
-  const ok = await cancelBooking(userId, c.req.param('id'));
-  if (!ok) return errorResponse(c, 'not_found', 'Booking not found or not cancellable');
+  const booking = await cancelBooking(userId, c.req.param('id'));
+  if (!booking) return errorResponse(c, 'not_found', 'Booking not found or not cancellable');
+
+  await notifyUser(userId, {
+    type: 'booking',
+    severity: 'info',
+    title: 'Booking cancelled',
+    body: `Your test booking on ${booking.date} at ${booking.startTime} was cancelled.`,
+    link: '/booking',
+    dedupeKey: `booking-cancelled:${booking.id}`,
+  });
+
   return c.json({ success: true });
 });

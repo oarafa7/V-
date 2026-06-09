@@ -23,6 +23,7 @@ const TYPE_ICON: Record<string, string> = {
   retest: 'CalendarClock',
   score: 'TrendingDown',
   insight: 'Sparkles',
+  booking: 'CalendarCheck',
   announcement: 'Megaphone',
   system: 'Bell',
 };

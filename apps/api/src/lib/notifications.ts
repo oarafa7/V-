@@ -146,3 +146,29 @@ export async function generateUserNotifications(userId: string): Promise<void> {
     void pushToUser(userId, { title: n.title, body: n.body });
   }
 }
+
+/**
+ * Insert a single notification for a user (deduped) and fire a best-effort push.
+ * Used for event-driven notifications like booking confirmations.
+ */
+export async function notifyUser(
+  userId: string,
+  n: { type: string; severity: string; title: string; body: string; link?: string | null; dedupeKey: string },
+): Promise<void> {
+  const [inserted] = await db
+    .insert(notifications)
+    .values({
+      userId,
+      type: n.type,
+      severity: n.severity,
+      title: n.title,
+      body: n.body,
+      link: n.link ?? null,
+      dedupeKey: n.dedupeKey,
+    })
+    .onConflictDoNothing({ target: [notifications.userId, notifications.dedupeKey] })
+    .returning({ id: notifications.id });
+
+  if (inserted) void pushToUser(userId, { title: n.title, body: n.body });
+}
+

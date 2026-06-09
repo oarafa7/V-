@@ -478,6 +478,7 @@ export type NotificationType =
   | 'retest'
   | 'score'
   | 'insight'
+  | 'booking'
   | 'announcement'
   | 'system';
 export type NotificationSeverity = 'info' | 'warning' | 'critical';

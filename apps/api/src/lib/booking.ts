@@ -184,21 +184,21 @@ export async function createBooking(userId: string, input: CreateBookingInput) {
   });
 }
 
-/** Cancel a booking and free its slot. */
-export async function cancelBooking(userId: string, bookingId: string): Promise<boolean> {
+/** Cancel a booking and free its slot. Returns the cancelled row, or null. */
+export async function cancelBooking(userId: string, bookingId: string) {
   return db.transaction(async (tx) => {
     const [booking] = await tx
       .select()
       .from(bookings)
       .where(and(eq(bookings.id, bookingId), eq(bookings.userId, userId)))
       .limit(1);
-    if (!booking || booking.status !== 'booked') return false;
+    if (!booking || booking.status !== 'booked') return null;
 
     await tx.update(bookings).set({ status: 'cancelled' }).where(eq(bookings.id, bookingId));
     await tx
       .update(bookingSlots)
       .set({ bookedCount: sql`greatest(${bookingSlots.bookedCount} - 1, 0)` })
       .where(eq(bookingSlots.id, booking.slotId));
-    return true;
+    return booking;
   });
 }
