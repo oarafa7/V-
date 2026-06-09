@@ -360,3 +360,66 @@ export const markReadSchema = z.object({
   ids: z.array(z.string()).optional(),
 });
 export type MarkReadInput = z.infer<typeof markReadSchema>;
+
+// Client info (activity level + address + map location)
+const activityLevelSchema = z.enum(['sedentary', 'light', 'moderate', 'active', 'very_active']);
+export const clientInfoSchema = z.object({
+  activity_level: activityLevelSchema.optional(),
+  address: z.string().max(400).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+});
+export type ClientInfoInput = z.infer<typeof clientInfoSchema>;
+
+// Test booking — admin
+const timeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'HH:MM');
+export const serviceAreaInputSchema = z.object({
+  name: z.string().min(1).max(120),
+  slug: z
+    .string()
+    .min(1)
+    .max(120)
+    .regex(/^[a-z0-9-]+$/, 'lowercase letters, numbers and hyphens only'),
+  city: z.string().max(120).default(''),
+  default_slot_minutes: z.number().int().min(15).max(480).default(60),
+  is_active: z.boolean().default(true),
+  display_order: z.number().int().default(0),
+});
+export type ServiceAreaInput = z.infer<typeof serviceAreaInputSchema>;
+export const serviceAreaUpdateSchema = serviceAreaInputSchema.partial();
+export type ServiceAreaUpdateInput = z.infer<typeof serviceAreaUpdateSchema>;
+
+export const availabilityWindowInputSchema = z
+  .object({
+    day_of_week: z.number().int().min(0).max(6),
+    start_time: timeSchema,
+    end_time: timeSchema,
+    capacity: z.number().int().min(1).max(500),
+  })
+  .refine((w) => w.end_time > w.start_time, { message: 'end_time must be after start_time' });
+export type AvailabilityWindowInput = z.infer<typeof availabilityWindowInputSchema>;
+
+const overrideWindowSchema = z
+  .object({
+    start_time: timeSchema,
+    end_time: timeSchema,
+    capacity: z.number().int().min(1).max(500),
+  })
+  .refine((w) => w.end_time > w.start_time, { message: 'end_time must be after start_time' });
+
+export const availabilityOverrideInputSchema = z.object({
+  date: isoDateSchema,
+  is_closed: z.boolean().default(false),
+  windows: z.array(overrideWindowSchema).nullable().default(null),
+});
+export type AvailabilityOverrideInput = z.infer<typeof availabilityOverrideInputSchema>;
+
+// Test booking — customer
+export const createBookingSchema = z.object({
+  area_id: z.string().uuid(),
+  date: isoDateSchema,
+  start_time: timeSchema,
+  end_time: timeSchema,
+  notes: z.string().max(400).optional(),
+});
+export type CreateBookingInput = z.infer<typeof createBookingSchema>;

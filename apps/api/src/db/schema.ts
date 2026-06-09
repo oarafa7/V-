@@ -37,6 +37,10 @@ export const users = pgTable('users', {
   chronicConditions: text('chronic_conditions').array().notNull().default([]),
   familyHistory: text('family_history').array().notNull().default([]),
   healthGoals: text('health_goals').array().notNull().default([]),
+  activityLevel: text('activity_level'),
+  address: text('address'),
+  latitude: decimal('latitude', { precision: 10, scale: 7 }),
+  longitude: decimal('longitude', { precision: 10, scale: 7 }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
@@ -336,6 +340,101 @@ export const deviceTokens = pgTable('device_tokens', {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Test booking (Phase 2 — service areas, availability, bookings)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const serviceAreas = pgTable('service_areas', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  city: text('city').notNull().default(''),
+  defaultSlotMinutes: integer('default_slot_minutes').notNull().default(60),
+  isActive: boolean('is_active').notNull().default(true),
+  displayOrder: integer('display_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Recurring weekly availability window templates. */
+export const availabilityWindows = pgTable('availability_windows', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  areaId: uuid('area_id')
+    .notNull()
+    .references(() => serviceAreas.id, { onDelete: 'cascade' }),
+  dayOfWeek: integer('day_of_week').notNull(), // 0=Sunday … 6=Saturday
+  startTime: text('start_time').notNull(), // 'HH:MM'
+  endTime: text('end_time').notNull(),
+  capacity: integer('capacity').notNull().default(1),
+});
+
+export interface OverrideWindowRow {
+  startTime: string;
+  endTime: string;
+  capacity: number;
+}
+
+/** Per-date overrides — close a date or replace its windows. */
+export const availabilityOverrides = pgTable(
+  'availability_overrides',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    areaId: uuid('area_id')
+      .notNull()
+      .references(() => serviceAreas.id, { onDelete: 'cascade' }),
+    date: date('date').notNull(),
+    isClosed: boolean('is_closed').notNull().default(false),
+    windows: jsonb('windows').$type<OverrideWindowRow[] | null>(),
+  },
+  (table) => ({
+    areaDateIdx: uniqueIndex('availability_overrides_area_date_idx').on(table.areaId, table.date),
+  }),
+);
+
+/** Materialized concrete slots — the capacity counter booked against. */
+export const bookingSlots = pgTable(
+  'booking_slots',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    areaId: uuid('area_id')
+      .notNull()
+      .references(() => serviceAreas.id, { onDelete: 'cascade' }),
+    date: date('date').notNull(),
+    startTime: text('start_time').notNull(),
+    endTime: text('end_time').notNull(),
+    capacity: integer('capacity').notNull(),
+    bookedCount: integer('booked_count').notNull().default(0),
+  },
+  (table) => ({
+    slotIdx: uniqueIndex('booking_slots_area_date_start_idx').on(
+      table.areaId,
+      table.date,
+      table.startTime,
+    ),
+  }),
+);
+
+export const bookings = pgTable('bookings', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  slotId: uuid('slot_id')
+    .notNull()
+    .references(() => bookingSlots.id, { onDelete: 'cascade' }),
+  areaId: uuid('area_id')
+    .notNull()
+    .references(() => serviceAreas.id, { onDelete: 'cascade' }),
+  date: date('date').notNull(),
+  startTime: text('start_time').notNull(),
+  endTime: text('end_time').notNull(),
+  status: text('status').notNull().default('booked'), // booked | cancelled | completed
+  address: text('address'),
+  latitude: decimal('latitude', { precision: 10, scale: 7 }),
+  longitude: decimal('longitude', { precision: 10, scale: 7 }),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Relations
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -400,3 +499,8 @@ export type AiChatMessageRow = typeof aiChatMessages.$inferSelect;
 export type InterventionRow = typeof interventions.$inferSelect;
 export type NotificationRow = typeof notifications.$inferSelect;
 export type DeviceTokenRow = typeof deviceTokens.$inferSelect;
+export type ServiceAreaRow = typeof serviceAreas.$inferSelect;
+export type AvailabilityWindowRow = typeof availabilityWindows.$inferSelect;
+export type AvailabilityOverrideRow = typeof availabilityOverrides.$inferSelect;
+export type BookingSlotRow = typeof bookingSlots.$inferSelect;
+export type BookingRow = typeof bookings.$inferSelect;

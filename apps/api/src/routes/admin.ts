@@ -13,6 +13,8 @@ import {
   adminUpdateUserSchema,
   aiConfigSchema,
   appContentSchema,
+  availabilityOverrideInputSchema,
+  availabilityWindowInputSchema,
   biomarkerInputSchema,
   categoryInputSchema,
   categoryUpdateSchema,
@@ -26,6 +28,8 @@ import {
   notificationConfigSchema,
   planInputSchema,
   planUpdateSchema,
+  serviceAreaInputSchema,
+  serviceAreaUpdateSchema,
   updateSubscriptionSchema,
 } from '@vital/shared';
 import { and, asc, desc, eq, gt, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
@@ -35,13 +39,17 @@ import { db } from '../db/client.js';
 import {
   aiChatMessages,
   aiInsights,
+  availabilityOverrides,
+  availabilityWindows,
   biomarkerCategories,
   biomarkers,
+  bookings,
   deviceTokens,
   healthGoals,
   interventions,
   labUploads,
   notifications,
+  serviceAreas,
   subscriptionPlans,
   subscriptions,
   userBiomarkerResults,
@@ -58,15 +66,19 @@ import { parseLabPdf } from '../lib/lab-pdf.js';
 import { computeUserScore, recordScoreSnapshot } from '../lib/score.js';
 import {
   serializeAiInsight,
+  serializeArea,
   serializeBiomarker,
+  serializeBooking,
   serializeCategory,
   serializeIntervention,
   serializeHealthGoal,
   serializeLabUpload,
+  serializeOverride,
   serializePlan,
   serializeResult,
   serializeSubscription,
   serializeUser,
+  serializeWindow,
 } from '../lib/serialize.js';
 import { signLabFile, uploadLabFile } from '../lib/storage.js';
 import { type AuthVariables, requireAuth } from '../middleware/auth.js';
@@ -990,5 +1002,172 @@ adminRoutes.get('/notifications/stats', async (c) => {
   const [devices] = await db.select({ n: sql<number>`count(*)::int` }).from(deviceTokens);
   return c.json({
     stats: { total: total?.n ?? 0, unread: unread?.n ?? 0, device_count: devices?.n ?? 0 },
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test booking — areas, availability, bookings
+// ─────────────────────────────────────────────────────────────────────────────
+
+adminRoutes.get('/areas', async (c) => {
+  const rows = await db.select().from(serviceAreas).orderBy(asc(serviceAreas.displayOrder));
+  return c.json({ areas: rows.map(serializeArea) });
+});
+
+adminRoutes.post('/areas', validate('json', serviceAreaInputSchema), async (c) => {
+  const b = c.req.valid('json');
+  const [row] = await db
+    .insert(serviceAreas)
+    .values({
+      name: b.name,
+      slug: b.slug,
+      city: b.city,
+      defaultSlotMinutes: b.default_slot_minutes,
+      isActive: b.is_active,
+      displayOrder: b.display_order,
+    })
+    .returning();
+  return c.json({ area: serializeArea(row!) }, 201);
+});
+
+adminRoutes.put('/areas/:id', validate('json', serviceAreaUpdateSchema), async (c) => {
+  const id = c.req.param('id');
+  const b = c.req.valid('json');
+  const [row] = await db
+    .update(serviceAreas)
+    .set({
+      ...(b.name !== undefined ? { name: b.name } : {}),
+      ...(b.slug !== undefined ? { slug: b.slug } : {}),
+      ...(b.city !== undefined ? { city: b.city } : {}),
+      ...(b.default_slot_minutes !== undefined ? { defaultSlotMinutes: b.default_slot_minutes } : {}),
+      ...(b.is_active !== undefined ? { isActive: b.is_active } : {}),
+      ...(b.display_order !== undefined ? { displayOrder: b.display_order } : {}),
+    })
+    .where(eq(serviceAreas.id, id))
+    .returning();
+  if (!row) return errorResponse(c, 'not_found', 'Area not found');
+  return c.json({ area: serializeArea(row) });
+});
+
+adminRoutes.delete('/areas/:id', async (c) => {
+  const id = c.req.param('id');
+  const [deleted] = await db.delete(serviceAreas).where(eq(serviceAreas.id, id)).returning();
+  if (!deleted) return errorResponse(c, 'not_found', 'Area not found');
+  return c.json({ success: true });
+});
+
+// Weekly windows for an area.
+adminRoutes.get('/areas/:id/windows', async (c) => {
+  const areaId = c.req.param('id');
+  const rows = await db
+    .select()
+    .from(availabilityWindows)
+    .where(eq(availabilityWindows.areaId, areaId))
+    .orderBy(asc(availabilityWindows.dayOfWeek), asc(availabilityWindows.startTime));
+  return c.json({ windows: rows.map(serializeWindow) });
+});
+
+adminRoutes.post(
+  '/areas/:id/windows',
+  validate('json', availabilityWindowInputSchema),
+  async (c) => {
+    const areaId = c.req.param('id');
+    const b = c.req.valid('json');
+    const [row] = await db
+      .insert(availabilityWindows)
+      .values({
+        areaId,
+        dayOfWeek: b.day_of_week,
+        startTime: b.start_time,
+        endTime: b.end_time,
+        capacity: b.capacity,
+      })
+      .returning();
+    return c.json({ window: serializeWindow(row!) }, 201);
+  },
+);
+
+adminRoutes.delete('/windows/:id', async (c) => {
+  const id = c.req.param('id');
+  const [deleted] = await db
+    .delete(availabilityWindows)
+    .where(eq(availabilityWindows.id, id))
+    .returning();
+  if (!deleted) return errorResponse(c, 'not_found', 'Window not found');
+  return c.json({ success: true });
+});
+
+// Date overrides for an area (upsert by date).
+adminRoutes.get('/areas/:id/overrides', async (c) => {
+  const areaId = c.req.param('id');
+  const rows = await db
+    .select()
+    .from(availabilityOverrides)
+    .where(eq(availabilityOverrides.areaId, areaId))
+    .orderBy(asc(availabilityOverrides.date));
+  return c.json({ overrides: rows.map(serializeOverride) });
+});
+
+adminRoutes.put(
+  '/areas/:id/overrides',
+  validate('json', availabilityOverrideInputSchema),
+  async (c) => {
+    const areaId = c.req.param('id');
+    const b = c.req.valid('json');
+    const windows = b.windows
+      ? b.windows.map((w) => ({ startTime: w.start_time, endTime: w.end_time, capacity: w.capacity }))
+      : null;
+    const [row] = await db
+      .insert(availabilityOverrides)
+      .values({ areaId, date: b.date, isClosed: b.is_closed, windows })
+      .onConflictDoUpdate({
+        target: [availabilityOverrides.areaId, availabilityOverrides.date],
+        set: { isClosed: b.is_closed, windows },
+      })
+      .returning();
+    return c.json({ override: serializeOverride(row!) });
+  },
+);
+
+adminRoutes.delete('/overrides/:id', async (c) => {
+  const id = c.req.param('id');
+  const [deleted] = await db
+    .delete(availabilityOverrides)
+    .where(eq(availabilityOverrides.id, id))
+    .returning();
+  if (!deleted) return errorResponse(c, 'not_found', 'Override not found');
+  return c.json({ success: true });
+});
+
+// All bookings (with user + area), filterable.
+adminRoutes.get('/bookings', async (c) => {
+  const areaId = c.req.query('areaId');
+  const date = c.req.query('date');
+  const status = c.req.query('status');
+  const conditions = [];
+  if (areaId) conditions.push(eq(bookings.areaId, areaId));
+  if (date) conditions.push(eq(bookings.date, date));
+  if (status) conditions.push(eq(bookings.status, status));
+
+  const rows = await db
+    .select({
+      booking: bookings,
+      userName: users.fullName,
+      userEmail: users.email,
+      areaName: serviceAreas.name,
+    })
+    .from(bookings)
+    .innerJoin(users, eq(bookings.userId, users.id))
+    .innerJoin(serviceAreas, eq(bookings.areaId, serviceAreas.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(bookings.date), asc(bookings.startTime))
+    .limit(300);
+
+  return c.json({
+    bookings: rows.map((r) => ({
+      ...serializeBooking(r.booking, r.areaName),
+      user_name: r.userName,
+      user_email: r.userEmail,
+    })),
   });
 });

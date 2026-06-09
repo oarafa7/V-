@@ -114,7 +114,7 @@ export default function HealthProfile() {
     try {
       await userApi.updateHealthProfile(parsed.data);
       await refreshUser();
-      router.replace('/(auth)/goals');
+      router.replace('/(auth)/client-info');
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : 'Could not save profile');
     } finally {

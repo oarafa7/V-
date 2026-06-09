@@ -10,9 +10,12 @@ import type {
   AiInsightStatus,
   AiInsightType,
   AppNotification,
+  AvailabilityOverride,
+  AvailabilityWindow,
   Biomarker,
   BiomarkerCategory,
   BiomarkerStatus,
+  Booking,
   EvidenceLevel,
   HealthGoalOption,
   Intervention,
@@ -20,6 +23,7 @@ import type {
   LabUpload,
   ScoreBand,
   ScoreHistoryPoint,
+  ServiceArea,
   Subscription,
   SubscriptionPlan,
   User,
@@ -29,13 +33,17 @@ import type {
 import type {
   AiChatMessageRow,
   AiInsightRow,
+  AvailabilityOverrideRow,
+  AvailabilityWindowRow,
   BiomarkerCategoryRow,
   BiomarkerRow,
+  BookingRow,
   HealthGoalRow,
   InterventionRow,
   LabUploadRow,
   NotificationRow,
   ScoreSnapshotRow,
+  ServiceAreaRow,
   SubscriptionPlanRow,
   SubscriptionRow,
   UserBiomarkerResultRow,
@@ -64,6 +72,10 @@ export function serializeUser(row: UserRow): User {
     chronic_conditions: (row.chronicConditions as User['chronic_conditions']) ?? [],
     family_history: (row.familyHistory as User['family_history']) ?? [],
     health_goals: (row.healthGoals as User['health_goals']) ?? [],
+    activity_level: (row.activityLevel as User['activity_level']) ?? null,
+    address: row.address,
+    latitude: row.latitude != null ? num(row.latitude) : null,
+    longitude: row.longitude != null ? num(row.longitude) : null,
     created_at: iso(row.createdAt),
     updated_at: iso(row.updatedAt),
   };
@@ -250,6 +262,63 @@ export function serializeScoreSnapshot(row: ScoreSnapshotRow): ScoreHistoryPoint
     longevity_score: row.longevityScore,
     confidence: row.confidence,
     recorded_on: row.recordedOn,
+    created_at: iso(row.createdAt),
+  };
+}
+
+export function serializeArea(row: ServiceAreaRow): ServiceArea {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    city: row.city,
+    default_slot_minutes: row.defaultSlotMinutes,
+    is_active: row.isActive,
+    display_order: row.displayOrder,
+  };
+}
+
+export function serializeWindow(row: AvailabilityWindowRow): AvailabilityWindow {
+  return {
+    id: row.id,
+    area_id: row.areaId,
+    day_of_week: row.dayOfWeek,
+    start_time: row.startTime,
+    end_time: row.endTime,
+    capacity: row.capacity,
+  };
+}
+
+export function serializeOverride(row: AvailabilityOverrideRow): AvailabilityOverride {
+  return {
+    id: row.id,
+    area_id: row.areaId,
+    date: row.date,
+    is_closed: row.isClosed,
+    windows: row.windows
+      ? row.windows.map((w) => ({
+          start_time: w.startTime,
+          end_time: w.endTime,
+          capacity: w.capacity,
+        }))
+      : null,
+  };
+}
+
+export function serializeBooking(row: BookingRow, areaName: string): Booking {
+  return {
+    id: row.id,
+    user_id: row.userId,
+    area_id: row.areaId,
+    area_name: areaName,
+    date: row.date,
+    start_time: row.startTime,
+    end_time: row.endTime,
+    status: row.status as Booking['status'],
+    address: row.address,
+    latitude: row.latitude != null ? num(row.latitude) : null,
+    longitude: row.longitude != null ? num(row.longitude) : null,
+    notes: row.notes,
     created_at: iso(row.createdAt),
   };
 }

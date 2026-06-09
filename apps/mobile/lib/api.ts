@@ -12,13 +12,18 @@ import type {
   AppNotification,
   BiomarkerListResponse,
   BiomarkerWithResult,
+  Booking,
+  ClientInfoInput,
+  CreateBookingInput,
   CreateResultInput,
+  DayAvailability,
   GoalsInput,
   HealthGoalOption,
   HealthProfileInput,
   LoginInput,
   RecommendedIntervention,
   ScoreHistoryPoint,
+  ServiceArea,
   SignupInput,
   SubscriptionPlan,
   SubscriptionWithPlan,
@@ -118,6 +123,22 @@ export const userApi = {
     request<{ user: User }>('/users/me/health-profile', { method: 'PUT', body: input }),
   updateGoals: (input: GoalsInput) =>
     request<{ user: User }>('/users/me/goals', { method: 'PUT', body: input }),
+  updateClientInfo: (input: ClientInfoInput) =>
+    request<{ user: User }>('/users/me/client-info', { method: 'PUT', body: input }),
+};
+
+// ── Test booking ───────────────────────────────────────────────────────────────
+export const bookingApi = {
+  areas: () => request<{ areas: ServiceArea[] }>('/areas'),
+  availability: (areaId: string, from: string, days = 14) =>
+    request<{ availability: DayAvailability[] }>(
+      `/areas/${areaId}/availability?from=${from}&days=${days}`,
+    ),
+  mine: () => request<{ bookings: Booking[] }>('/bookings/me'),
+  book: (input: CreateBookingInput) =>
+    request<{ booking: Booking }>('/bookings', { method: 'POST', body: input }),
+  cancel: (id: string) =>
+    request<{ success: boolean }>(`/bookings/${id}/cancel`, { method: 'POST' }),
 };
 
 // ── Subscriptions / payments ──────────────────────────────────────────────────

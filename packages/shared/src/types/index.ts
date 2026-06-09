@@ -16,6 +16,9 @@ export type ISODateTimeString = string; // e.g. "2026-06-03T11:37:00.000Z"
 
 export type Gender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
 
+export const ACTIVITY_LEVELS = ['sedentary', 'light', 'moderate', 'active', 'very_active'] as const;
+export type ActivityLevel = (typeof ACTIVITY_LEVELS)[number];
+
 export type UserRole = 'user' | 'admin';
 
 export type ResultSource = 'manual' | 'admin' | 'lab_upload';
@@ -93,6 +96,10 @@ export interface User {
   chronic_conditions: ChronicCondition[];
   family_history: ChronicCondition[];
   health_goals: HealthGoal[];
+  activity_level: ActivityLevel | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
   created_at: ISODateTimeString;
   updated_at: ISODateTimeString;
 }
@@ -513,6 +520,86 @@ export interface NotificationStats {
   total: number;
   unread: number;
   device_count: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test booking (Phase 2 — service areas, availability, bookings)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A serviceable area (e.g. "New Cairo") with its default slot window length. */
+export interface ServiceArea {
+  id: UUID;
+  name: string;
+  slug: string;
+  city: string;
+  default_slot_minutes: number; // 60 | 120 | 180 — the area's default window length
+  is_active: boolean;
+  display_order: number;
+}
+
+/** A recurring weekly availability window template for an area. */
+export interface AvailabilityWindow {
+  id: UUID;
+  area_id: UUID;
+  day_of_week: number; // 0=Sunday … 6=Saturday
+  start_time: string; // "HH:MM"
+  end_time: string; // "HH:MM"
+  capacity: number; // number of tests bookable in this window
+}
+
+/** A custom window inside a date override. */
+export interface OverrideWindow {
+  start_time: string;
+  end_time: string;
+  capacity: number;
+}
+
+/** A per-date override: close the date, or replace its windows. */
+export interface AvailabilityOverride {
+  id: UUID;
+  area_id: UUID;
+  date: ISODateString;
+  is_closed: boolean;
+  windows: OverrideWindow[] | null; // null = fall back to the weekly template
+}
+
+/** A resolved, bookable slot for a specific date with live remaining capacity. */
+export interface AvailabilitySlot {
+  start_time: string;
+  end_time: string;
+  capacity: number;
+  booked: number;
+  remaining: number;
+}
+
+export interface DayAvailability {
+  date: ISODateString;
+  is_closed: boolean;
+  slots: AvailabilitySlot[];
+}
+
+export type BookingStatus = 'booked' | 'cancelled' | 'completed';
+
+export interface Booking {
+  id: UUID;
+  user_id: UUID;
+  area_id: UUID;
+  area_name: string;
+  date: ISODateString;
+  start_time: string;
+  end_time: string;
+  status: BookingStatus;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  notes: string | null;
+  created_at: ISODateTimeString;
+}
+
+/** Admin booking row with the user attached. */
+export interface AdminBooking extends Booking {
+  user_name: string;
+  user_email: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

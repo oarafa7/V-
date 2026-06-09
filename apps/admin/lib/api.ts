@@ -11,8 +11,13 @@ import type {
   AiConfigInput,
   AiInsight,
   AiUsageStats,
+  AdminBooking,
   AppContent,
   AppContentInput,
+  AvailabilityOverride,
+  AvailabilityOverrideInput,
+  AvailabilityWindow,
+  AvailabilityWindowInput,
   BroadcastInput,
   Biomarker,
   BiomarkerCategory,
@@ -34,6 +39,9 @@ import type {
   PlanInput,
   PlanUpdateInput,
   RecommendedIntervention,
+  ServiceArea,
+  ServiceAreaInput,
+  ServiceAreaUpdateInput,
   Subscription,
   SubscriptionPlan,
   UpdateSubscriptionInput,
@@ -250,4 +258,38 @@ export const api = {
       body,
     }),
   notificationStats: () => request<{ stats: NotificationStats }>('/admin/notifications/stats'),
+
+  // test booking — areas, availability, bookings
+  areas: () => request<{ areas: ServiceArea[] }>('/admin/areas'),
+  createArea: (body: ServiceAreaInput) =>
+    request<{ area: ServiceArea }>('/admin/areas', { method: 'POST', body }),
+  updateArea: (id: string, body: ServiceAreaUpdateInput) =>
+    request<{ area: ServiceArea }>(`/admin/areas/${id}`, { method: 'PUT', body }),
+  deleteArea: (id: string) =>
+    request<{ success: boolean }>(`/admin/areas/${id}`, { method: 'DELETE' }),
+  windows: (areaId: string) =>
+    request<{ windows: AvailabilityWindow[] }>(`/admin/areas/${areaId}/windows`),
+  createWindow: (areaId: string, body: AvailabilityWindowInput) =>
+    request<{ window: AvailabilityWindow }>(`/admin/areas/${areaId}/windows`, {
+      method: 'POST',
+      body,
+    }),
+  deleteWindow: (id: string) =>
+    request<{ success: boolean }>(`/admin/windows/${id}`, { method: 'DELETE' }),
+  overrides: (areaId: string) =>
+    request<{ overrides: AvailabilityOverride[] }>(`/admin/areas/${areaId}/overrides`),
+  saveOverride: (areaId: string, body: AvailabilityOverrideInput) =>
+    request<{ override: AvailabilityOverride }>(`/admin/areas/${areaId}/overrides`, {
+      method: 'PUT',
+      body,
+    }),
+  deleteOverride: (id: string) =>
+    request<{ success: boolean }>(`/admin/overrides/${id}`, { method: 'DELETE' }),
+  bookings: (params: { areaId?: string; date?: string; status?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.areaId) q.set('areaId', params.areaId);
+    if (params.date) q.set('date', params.date);
+    if (params.status) q.set('status', params.status);
+    return request<{ bookings: AdminBooking[] }>(`/admin/bookings?${q}`);
+  },
 };

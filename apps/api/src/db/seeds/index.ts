@@ -12,10 +12,12 @@ import { eq } from 'drizzle-orm';
 import { db } from '../client.js';
 import {
   appSettings,
+  availabilityWindows,
   biomarkerCategories,
   biomarkers,
   healthGoals,
   interventions,
+  serviceAreas,
   subscriptionPlans,
 } from '../schema.js';
 import { HEALTH_GOAL_SEED } from './goals.js';
@@ -197,6 +199,40 @@ async function seedContent() {
   }
 }
 
+/** Seed one demo service area (New Cairo) with weekday morning windows. */
+async function seedAreas() {
+  const [existing] = await db
+    .select({ id: serviceAreas.id })
+    .from(serviceAreas)
+    .where(eq(serviceAreas.slug, 'new-cairo'))
+    .limit(1);
+  if (existing) return; // idempotent: leave admin-managed data untouched
+
+  const [area] = await db
+    .insert(serviceAreas)
+    .values({
+      name: 'New Cairo',
+      slug: 'new-cairo',
+      city: 'Cairo',
+      defaultSlotMinutes: 60,
+      isActive: true,
+      displayOrder: 1,
+    })
+    .returning({ id: serviceAreas.id });
+
+  // Sun–Thu (Egyptian work week), 07:00–10:00 home-draw windows, capacity 5.
+  const windows = [0, 1, 2, 3, 4].flatMap((dayOfWeek) =>
+    ['07:00', '08:00', '09:00'].map((startTime) => ({
+      areaId: area!.id,
+      dayOfWeek,
+      startTime,
+      endTime: `${String(Number(startTime.slice(0, 2)) + 1).padStart(2, '0')}:00`,
+      capacity: 5,
+    })),
+  );
+  await db.insert(availabilityWindows).values(windows);
+}
+
 async function main() {
   console.log('Seeding categories…');
   const slugToId = await seedCategories();
@@ -220,6 +256,9 @@ async function main() {
 
   console.log('Seeding app content defaults…');
   await seedContent();
+
+  console.log('Seeding demo service area…');
+  await seedAreas();
 
   console.log('Seed complete.');
   process.exit(0);

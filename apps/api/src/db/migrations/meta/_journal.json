@@ -57,6 +57,13 @@
       "when": 1780957838730,
       "tag": "0007_notifications",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1780959979175,
+      "tag": "0008_test_booking",
+      "breakpoints": true
     }
   ]
 }

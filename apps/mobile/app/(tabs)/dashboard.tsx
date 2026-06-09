@@ -109,6 +109,12 @@ export default function Dashboard() {
                 subtitle="Supplements & lifestyle tailored to you"
                 onPress={() => router.push('/recommendations')}
               />
+              <DashCard
+                icon="CalendarCheck"
+                title="Book a Test"
+                subtitle="Schedule a home blood draw near you"
+                onPress={() => router.push('/booking')}
+              />
             </View>
 
             {/* Subscription summary */}

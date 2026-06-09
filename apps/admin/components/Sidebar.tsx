@@ -9,6 +9,8 @@ const NAV = [
   { href: '/', label: 'Overview' },
   { href: '/users', label: 'Users' },
   { href: '/plans', label: 'Plans & Pricing' },
+  { href: '/areas', label: 'Booking Areas' },
+  { href: '/bookings', label: 'Bookings' },
   { href: '/biomarkers', label: 'Biomarkers' },
   { href: '/categories', label: 'Categories' },
   { href: '/goals', label: 'Health Goals' },
