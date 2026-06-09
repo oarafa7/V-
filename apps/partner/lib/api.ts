@@ -76,6 +76,13 @@ export interface PartnerProfile {
   areas: ServiceArea[];
 }
 
+/** Slim biomarker option for the review-row selector. */
+export interface BiomarkerOption {
+  id: string;
+  name: string;
+  unit: string;
+}
+
 export const api = {
   // auth
   login: (email: string, password: string) =>
@@ -95,6 +102,7 @@ export const api = {
     return request<{ appointments: PartnerAppointment[] }>(`/lab-partner/appointments?${q}`);
   },
   userDetail: (userId: string) => request<PartnerUserDetail>(`/lab-partner/users/${userId}`),
+  biomarkers: () => request<{ biomarkers: BiomarkerOption[] }>('/lab-partner/biomarkers'),
   uploadLab: (userId: string, file: File, meta: { lab_name?: string; tested_at?: string }) => {
     const form = new FormData();
     form.append('file', file);

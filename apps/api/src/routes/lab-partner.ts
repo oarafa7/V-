@@ -5,11 +5,19 @@
  * pipeline into the patient's record.
  */
 import { confirmLabUploadSchema, type PartnerAppointment } from '@vital/shared';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 
 import { db } from '../db/client.js';
-import { bookings, labPartnerAreas, labUploads, serviceAreas, userBiomarkerResults, users } from '../db/schema.js';
+import {
+  biomarkers,
+  bookings,
+  labPartnerAreas,
+  labUploads,
+  serviceAreas,
+  userBiomarkerResults,
+  users,
+} from '../db/schema.js';
 import { errorResponse } from '../lib/http.js';
 import { confirmUpload, parseAndStoreUpload } from '../lib/lab-upload.js';
 import { activePlanSummary, partnerAreaIds, partnerCanAccessUser } from '../lib/lab-partner.js';
@@ -46,6 +54,16 @@ labPartnerRoutes.get('/me', async (c) => {
       areas: areas.map(serializeArea),
     },
   });
+});
+
+/** Active biomarker catalog (slim) — lets partners remap parsed rows on review. */
+labPartnerRoutes.get('/biomarkers', async (c) => {
+  const rows = await db
+    .select({ id: biomarkers.id, name: biomarkers.name, unit: biomarkers.unit })
+    .from(biomarkers)
+    .where(eq(biomarkers.isActive, true))
+    .orderBy(asc(biomarkers.name));
+  return c.json({ biomarkers: rows });
 });
 
 /** Appointments in the partner's areas, with patient + plan (tests required). */

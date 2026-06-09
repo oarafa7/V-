@@ -6,8 +6,8 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import { useToast } from '@/components/toast';
-import { Button, Card, Field, Input, Spinner, StatusPill } from '@/components/ui';
-import { ApiError, api } from '@/lib/api';
+import { Button, Card, Field, Input, Select, Spinner, StatusPill } from '@/components/ui';
+import { ApiError, api, type BiomarkerOption } from '@/lib/api';
 
 export default function AppointmentDetailPage() {
   // useSearchParams must sit under a Suspense boundary for the production build.
@@ -175,6 +175,12 @@ function UploadTab({
   const [busy, setBusy] = useState(false);
   const [upload, setUpload] = useState<LabUpload | null>(null);
   const [rows, setRows] = useState<ReviewRow[]>([]);
+  const [catalog, setCatalog] = useState<BiomarkerOption[]>([]);
+
+  useEffect(() => {
+    api.biomarkers().then((r) => setCatalog(r.biomarkers)).catch(() => {});
+  }, []);
+  const unitFor = (id: string | null) => catalog.find((b) => b.id === id)?.unit ?? '';
 
   const err = (e: unknown) => push('error', e instanceof ApiError ? e.message : 'Failed');
 
@@ -250,33 +256,53 @@ function UploadTab({
         <div>
           <h3 className="mb-2 font-display text-sm font-bold text-ink">Review parsed results</h3>
           <p className="mb-3 text-xs text-inkMuted">
-            Only rows matched to a VITAL biomarker can be imported. Uncheck anything that looks wrong.
+            Each row shows the biomarker we matched from the PDF — remap it with the dropdown if it's
+            wrong, or map an unmatched row. Uncheck anything you don't want to import.
           </p>
           <div className="space-y-1">
             {rows.map((r, i) => {
-              const matched = Boolean(r.biomarker_id);
+              const mapped = Boolean(r.biomarker_id);
               return (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 rounded border border-line px-3 py-2 text-sm"
-                  style={{ opacity: matched ? 1 : 0.5 }}
-                >
+                <div key={i} className="flex items-center gap-3 rounded border border-line px-3 py-2 text-sm">
                   <input
                     type="checkbox"
-                    disabled={!matched}
-                    checked={r.include && matched}
+                    disabled={!mapped || r._value === ''}
+                    checked={r.include && mapped}
                     onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, include: e.target.checked } : x)))}
                   />
-                  <span className="flex-1 text-ink">
-                    {r.matched_name ?? r.biomarker_name}
-                    {!matched ? <span className="ml-2 text-xs text-rust">(unmatched)</span> : null}
-                  </span>
+                  <div className="flex-1">
+                    <Select
+                      value={r.biomarker_id ?? ''}
+                      onChange={(e) =>
+                        setRows(
+                          rows.map((x, j) =>
+                            j === i
+                              ? {
+                                  ...x,
+                                  biomarker_id: e.target.value || null,
+                                  // auto-include once it's mapped and has a value
+                                  include: Boolean(e.target.value) && x._value !== '',
+                                }
+                              : x,
+                          ),
+                        )
+                      }
+                    >
+                      <option value="">— unmatched: pick a biomarker —</option>
+                      {catalog.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </Select>
+                    <div className="mt-0.5 text-xs text-inkMuted">from PDF: {r.biomarker_name}</div>
+                  </div>
                   <Input
                     className="w-24"
                     value={r._value}
                     onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, _value: e.target.value } : x)))}
                   />
-                  <span className="w-12 text-xs text-inkMuted">{r.unit ?? ''}</span>
+                  <span className="w-12 text-xs text-inkMuted">{unitFor(r.biomarker_id)}</span>
                   <span className="w-14 text-right text-xs text-inkMuted">{Math.round(r.confidence * 100)}%</span>
                 </div>
               );
