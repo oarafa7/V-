@@ -434,6 +434,27 @@ export const bookings = pgTable('bookings', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Service areas a lab partner is assigned to (scopes what they can see). */
+export const labPartnerAreas = pgTable(
+  'lab_partner_areas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    areaId: uuid('area_id')
+      .notNull()
+      .references(() => serviceAreas.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    partnerAreaIdx: uniqueIndex('lab_partner_areas_partner_area_idx').on(
+      table.partnerId,
+      table.areaId,
+    ),
+  }),
+);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Relations
 // ─────────────────────────────────────────────────────────────────────────────
@@ -504,3 +525,4 @@ export type AvailabilityWindowRow = typeof availabilityWindows.$inferSelect;
 export type AvailabilityOverrideRow = typeof availabilityOverrides.$inferSelect;
 export type BookingSlotRow = typeof bookingSlots.$inferSelect;
 export type BookingRow = typeof bookings.$inferSelect;
+export type LabPartnerAreaRow = typeof labPartnerAreas.$inferSelect;

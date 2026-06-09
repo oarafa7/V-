@@ -14,6 +14,9 @@ import type {
   AdminBooking,
   AppContent,
   AppContentInput,
+  AssignPartnerAreasInput,
+  CreatePartnerInput,
+  LabPartnerSummary,
   AvailabilityOverride,
   AvailabilityOverrideInput,
   AvailabilityWindow,
@@ -292,4 +295,16 @@ export const api = {
     if (params.status) q.set('status', params.status);
     return request<{ bookings: AdminBooking[] }>(`/admin/bookings?${q}`);
   },
+
+  // lab partners
+  partners: () => request<{ partners: LabPartnerSummary[] }>('/admin/partners'),
+  createPartner: (body: CreatePartnerInput) =>
+    request<{ partner: LabPartnerSummary }>('/admin/partners', { method: 'POST', body }),
+  assignPartnerAreas: (id: string, body: AssignPartnerAreasInput) =>
+    request<{ success: boolean; area_ids: string[] }>(`/admin/partners/${id}/areas`, {
+      method: 'PUT',
+      body,
+    }),
+  deletePartner: (id: string) =>
+    request<{ success: boolean }>(`/admin/partners/${id}`, { method: 'DELETE' }),
 };

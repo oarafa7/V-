@@ -21,6 +21,7 @@ import type {
   Intervention,
   InterventionCategory,
   LabUpload,
+  PartnerUserSummary,
   ScoreBand,
   ScoreHistoryPoint,
   ServiceArea,
@@ -302,6 +303,17 @@ export function serializeOverride(row: AvailabilityOverrideRow): AvailabilityOve
           capacity: w.capacity,
         }))
       : null,
+  };
+}
+
+export function serializePartnerUserSummary(row: UserRow): PartnerUserSummary {
+  return {
+    id: row.id,
+    full_name: row.fullName,
+    email: row.email,
+    phone: row.phone,
+    date_of_birth: row.dateOfBirth,
+    gender: (row.gender as PartnerUserSummary['gender']) ?? null,
   };
 }
 

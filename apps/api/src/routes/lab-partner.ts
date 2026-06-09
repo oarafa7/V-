@@ -1,0 +1,176 @@
+/**
+ * Lab partner portal routes (mounted at /lab-partner). A partner sees only
+ * appointments and patients in the service areas assigned to them, and can
+ * upload result PDFs that flow through the shared parse → review → confirm
+ * pipeline into the patient's record.
+ */
+import { confirmLabUploadSchema, type PartnerAppointment } from '@vital/shared';
+import { and, desc, eq, inArray } from 'drizzle-orm';
+import { Hono } from 'hono';
+
+import { db } from '../db/client.js';
+import { bookings, labPartnerAreas, labUploads, serviceAreas, userBiomarkerResults, users } from '../db/schema.js';
+import { errorResponse } from '../lib/http.js';
+import { confirmUpload, parseAndStoreUpload } from '../lib/lab-upload.js';
+import { activePlanSummary, partnerAreaIds, partnerCanAccessUser } from '../lib/lab-partner.js';
+import {
+  serializeArea,
+  serializeBooking,
+  serializeLabUpload,
+  serializePartnerUserSummary,
+  serializeResult,
+} from '../lib/serialize.js';
+import { signLabFile } from '../lib/storage.js';
+import { type AuthVariables, requireAuth } from '../middleware/auth.js';
+import { requireLabPartner } from '../middleware/lab-partner.js';
+import { validate } from '../middleware/validate.js';
+
+export const labPartnerRoutes = new Hono<{ Variables: AuthVariables }>();
+
+labPartnerRoutes.use('*', requireAuth, requireLabPartner);
+
+/** Partner profile + assigned areas. */
+labPartnerRoutes.get('/me', async (c) => {
+  const partner = c.get('user');
+  const areaIds = await partnerAreaIds(partner.id);
+  const areas = areaIds.length
+    ? await db.select().from(serviceAreas).where(inArray(serviceAreas.id, areaIds))
+    : [];
+  return c.json({
+    partner: {
+      id: partner.id,
+      email: partner.email,
+      full_name: partner.fullName,
+      phone: partner.phone,
+      area_ids: areaIds,
+      areas: areas.map(serializeArea),
+    },
+  });
+});
+
+/** Appointments in the partner's areas, with patient + plan (tests required). */
+labPartnerRoutes.get('/appointments', async (c) => {
+  const partner = c.get('user');
+  const areaIds = await partnerAreaIds(partner.id);
+  if (areaIds.length === 0) return c.json({ appointments: [] });
+
+  const date = c.req.query('date');
+  const status = c.req.query('status');
+  const conditions = [inArray(bookings.areaId, areaIds)];
+  if (date) conditions.push(eq(bookings.date, date));
+  if (status) conditions.push(eq(bookings.status, status));
+
+  const rows = await db
+    .select({ booking: bookings, areaName: serviceAreas.name, user: users })
+    .from(bookings)
+    .innerJoin(serviceAreas, eq(bookings.areaId, serviceAreas.id))
+    .innerJoin(users, eq(bookings.userId, users.id))
+    .where(and(...conditions))
+    .orderBy(desc(bookings.date), bookings.startTime)
+    .limit(300);
+
+  // Resolve each distinct patient's active-plan summary once.
+  const planByUser = new Map<string, Awaited<ReturnType<typeof activePlanSummary>>>();
+  for (const userId of new Set(rows.map((r) => r.user.id))) {
+    planByUser.set(userId, await activePlanSummary(userId));
+  }
+
+  const appointments: PartnerAppointment[] = rows.map((r) => ({
+    ...serializeBooking(r.booking, r.areaName),
+    user: serializePartnerUserSummary(r.user),
+    plan: planByUser.get(r.user.id) ?? null,
+  }));
+  return c.json({ appointments });
+});
+
+/** Full patient detail — gated to the partner's areas. */
+labPartnerRoutes.get('/users/:userId', async (c) => {
+  const partner = c.get('user');
+  const userId = c.req.param('userId');
+  if (!(await partnerCanAccessUser(partner.id, userId))) {
+    return errorResponse(c, 'forbidden', 'This patient is not in your service areas');
+  }
+
+  const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+  if (!user) return errorResponse(c, 'not_found', 'User not found');
+
+  const areaIds = await partnerAreaIds(partner.id);
+  const userBookings = await db
+    .select({ booking: bookings, areaName: serviceAreas.name })
+    .from(bookings)
+    .innerJoin(serviceAreas, eq(bookings.areaId, serviceAreas.id))
+    .where(and(eq(bookings.userId, userId), inArray(bookings.areaId, areaIds)))
+    .orderBy(desc(bookings.date));
+
+  const uploads = await db
+    .select()
+    .from(labUploads)
+    .where(eq(labUploads.userId, userId))
+    .orderBy(desc(labUploads.createdAt));
+
+  const results = await db
+    .select()
+    .from(userBiomarkerResults)
+    .where(eq(userBiomarkerResults.userId, userId))
+    .orderBy(desc(userBiomarkerResults.testedAt));
+
+  return c.json({
+    user: serializePartnerUserSummary(user),
+    plan: await activePlanSummary(userId),
+    appointments: userBookings.map((b) => serializeBooking(b.booking, b.areaName)),
+    lab_uploads: uploads.map(serializeLabUpload),
+    results: results.map(serializeResult),
+  });
+});
+
+/** Upload a result PDF for a patient (parse → review). */
+labPartnerRoutes.post('/users/:userId/lab-uploads', async (c) => {
+  const partner = c.get('user');
+  const userId = c.req.param('userId');
+  if (!(await partnerCanAccessUser(partner.id, userId))) {
+    return errorResponse(c, 'forbidden', 'This patient is not in your service areas');
+  }
+
+  const body = await c.req.parseBody();
+  const file = body['file'];
+  if (!(file instanceof File)) {
+    return errorResponse(c, 'validation_error', 'Attach a PDF file under the "file" field');
+  }
+  const labName = typeof body['lab_name'] === 'string' ? (body['lab_name'] as string) : null;
+  const testedAt = typeof body['tested_at'] === 'string' ? (body['tested_at'] as string) : null;
+
+  const payload = await parseAndStoreUpload({
+    userId,
+    file,
+    labName,
+    testedAt,
+    uploadedById: partner.id,
+  });
+  return c.json({ upload: payload }, 201);
+});
+
+/** Read a single upload (with a signed PDF link) — access-checked. */
+labPartnerRoutes.get('/lab-uploads/:id', async (c) => {
+  const partner = c.get('user');
+  const [row] = await db.select().from(labUploads).where(eq(labUploads.id, c.req.param('id'))).limit(1);
+  if (!row) return errorResponse(c, 'not_found', 'Upload not found');
+  if (!(await partnerCanAccessUser(partner.id, row.userId))) {
+    return errorResponse(c, 'forbidden', 'Not permitted');
+  }
+  const payload = serializeLabUpload(row);
+  payload.file_url = (await signLabFile(row.filePath)) ?? undefined;
+  return c.json({ upload: payload });
+});
+
+/** Confirm reviewed rows → import into the patient's record. */
+labPartnerRoutes.post('/lab-uploads/:id/confirm', validate('json', confirmLabUploadSchema), async (c) => {
+  const partner = c.get('user');
+  const id = c.req.param('id');
+  const [row] = await db.select({ userId: labUploads.userId }).from(labUploads).where(eq(labUploads.id, id)).limit(1);
+  if (!row) return errorResponse(c, 'not_found', 'Upload not found');
+  if (!(await partnerCanAccessUser(partner.id, row.userId))) {
+    return errorResponse(c, 'forbidden', 'Not permitted');
+  }
+  const { imported } = await confirmUpload(id, c.req.valid('json'));
+  return c.json({ success: true, imported });
+});

@@ -19,7 +19,7 @@ export type Gender = 'male' | 'female' | 'other' | 'prefer_not_to_say';
 export const ACTIVITY_LEVELS = ['sedentary', 'light', 'moderate', 'active', 'very_active'] as const;
 export type ActivityLevel = (typeof ACTIVITY_LEVELS)[number];
 
-export type UserRole = 'user' | 'admin';
+export type UserRole = 'user' | 'admin' | 'lab_partner';
 
 export type ResultSource = 'manual' | 'admin' | 'lab_upload';
 
@@ -479,6 +479,7 @@ export type NotificationType =
   | 'score'
   | 'insight'
   | 'booking'
+  | 'results'
   | 'announcement'
   | 'system';
 export type NotificationSeverity = 'info' | 'warning' | 'critical';
@@ -601,6 +602,53 @@ export interface Booking {
 export interface AdminBooking extends Booking {
   user_name: string;
   user_email: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lab partner portal
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** A lab-partner account with the service areas it's assigned to. */
+export interface LabPartnerSummary {
+  id: UUID;
+  email: string;
+  full_name: string;
+  phone: string | null;
+  area_ids: UUID[];
+  areas: { id: UUID; name: string; city: string }[];
+}
+
+/** Summary of the patient's active plan — what tests the draw should cover. */
+export interface PartnerPlanSummary {
+  name: PlanName;
+  biomarker_count: number;
+  annual_tests_count: number;
+  features: string[];
+}
+
+/** Patient summary shown to a lab partner alongside an appointment. */
+export interface PartnerUserSummary {
+  id: UUID;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  date_of_birth: ISODateString | null;
+  gender: Gender | null;
+}
+
+/** A booking enriched for the partner appointments view. */
+export interface PartnerAppointment extends Booking {
+  user: PartnerUserSummary;
+  plan: PartnerPlanSummary | null;
+}
+
+/** Full patient detail for the partner (gated to the partner's areas). */
+export interface PartnerUserDetail {
+  user: PartnerUserSummary;
+  plan: PartnerPlanSummary | null;
+  appointments: Booking[];
+  lab_uploads: LabUpload[];
+  results: UserBiomarkerResult[];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

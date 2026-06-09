@@ -67,7 +67,7 @@ bookingRoutes.post('/bookings', validate('json', createBookingSchema), async (c)
     severity: 'info',
     title: 'Test booked ✓',
     body: `Your home test in ${areaName} is confirmed for ${booking.date}, ${booking.startTime}–${booking.endTime}.`,
-    link: '/booking',
+    link: 'booking',
     dedupeKey: `booking-confirmed:${booking.id}`,
   });
 
@@ -84,7 +84,7 @@ bookingRoutes.post('/bookings/:id/cancel', async (c) => {
     severity: 'info',
     title: 'Booking cancelled',
     body: `Your test booking on ${booking.date} at ${booking.startTime} was cancelled.`,
-    link: '/booking',
+    link: 'booking',
     dedupeKey: `booking-cancelled:${booking.id}`,
   });
 

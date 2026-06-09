@@ -13,9 +13,11 @@ import {
   adminUpdateUserSchema,
   aiConfigSchema,
   appContentSchema,
+  assignPartnerAreasSchema,
   availabilityOverrideInputSchema,
   availabilityWindowInputSchema,
   biomarkerInputSchema,
+  createPartnerSchema,
   categoryInputSchema,
   categoryUpdateSchema,
   confirmLabUploadSchema,
@@ -47,6 +49,7 @@ import {
   deviceTokens,
   healthGoals,
   interventions,
+  labPartnerAreas,
   labUploads,
   notifications,
   serviceAreas,
@@ -59,11 +62,12 @@ import { generateAndStoreInsights } from '../lib/ai.js';
 import { getAiConfig, setAiConfig } from '../lib/ai-config.js';
 import { getAppContent, setAppContent } from '../lib/content.js';
 import { getNotificationConfig, setNotificationConfig } from '../lib/notification-config.js';
+import { confirmUpload, parseAndStoreUpload } from '../lib/lab-upload.js';
 import { generateUserNotifications } from '../lib/notifications.js';
 import { computeUserRecommendations } from '../lib/recommendations.js';
 import { errorResponse } from '../lib/http.js';
-import { parseLabPdf } from '../lib/lab-pdf.js';
 import { computeUserScore, recordScoreSnapshot } from '../lib/score.js';
+import { supabaseAdmin } from '../lib/supabase.js';
 import {
   serializeAiInsight,
   serializeArea,
@@ -80,7 +84,7 @@ import {
   serializeUser,
   serializeWindow,
 } from '../lib/serialize.js';
-import { signLabFile, uploadLabFile } from '../lib/storage.js';
+import { signLabFile } from '../lib/storage.js';
 import { type AuthVariables, requireAuth } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/admin.js';
 import { validate } from '../middleware/validate.js';
@@ -337,54 +341,17 @@ adminRoutes.post('/users/:id/lab-uploads', async (c) => {
   if (!(file instanceof File)) {
     return errorResponse(c, 'validation_error', 'Attach a PDF file under the "file" field');
   }
-  if (file.type && !file.type.includes('pdf')) {
-    return errorResponse(c, 'unprocessable', 'Only PDF lab reports are supported');
-  }
 
   const labName = typeof body['lab_name'] === 'string' ? (body['lab_name'] as string) : null;
   const testedAt = typeof body['tested_at'] === 'string' ? (body['tested_at'] as string) : null;
 
-  const bytes = await file.arrayBuffer();
-
-  // Store the original PDF.
-  const filePath = await uploadLabFile(userId, file.name, bytes, file.type || 'application/pdf');
-
-  // Parse against the active biomarker library to produce draft rows.
-  const lib = await db
-    .select({
-      id: biomarkers.id,
-      name: biomarkers.name,
-      unit: biomarkers.unit,
-      slug: biomarkers.slug,
-      minPlausible: biomarkers.minPlausible,
-      maxPlausible: biomarkers.maxPlausible,
-      tags: biomarkers.tags,
-    })
-    .from(biomarkers)
-    .where(eq(biomarkers.isActive, true));
-
-  const parsed = await parseLabPdf(Buffer.from(bytes), lib.map((b) => ({
-    ...b,
-    minPlausible: Number(b.minPlausible),
-    maxPlausible: Number(b.maxPlausible),
-  })));
-
-  const [row] = await db
-    .insert(labUploads)
-    .values({
-      userId,
-      filePath,
-      originalName: file.name,
-      labName,
-      testedAt,
-      status: parsed.length > 0 ? 'parsed' : 'failed',
-      parsed,
-      uploadedBy: admin.id,
-    })
-    .returning();
-
-  const payload = serializeLabUpload(row!);
-  payload.file_url = (await signLabFile(filePath)) ?? undefined;
+  const payload = await parseAndStoreUpload({
+    userId,
+    file,
+    labName,
+    testedAt,
+    uploadedById: admin.id,
+  });
   return c.json({ upload: payload }, 201);
 });
 
@@ -401,40 +368,8 @@ adminRoutes.post(
   '/lab-uploads/:id/confirm',
   validate('json', confirmLabUploadSchema),
   async (c) => {
-    const id = c.req.param('id');
-    const { tested_at, lab_name, rows } = c.req.valid('json');
-
-    const [upload] = await db.select().from(labUploads).where(eq(labUploads.id, id)).limit(1);
-    if (!upload) return errorResponse(c, 'not_found', 'Upload not found');
-
-    const included = rows.filter((r) => r.include);
-    if (included.length === 0) {
-      return errorResponse(c, 'unprocessable', 'No rows selected to import');
-    }
-
-    const inserted = await db
-      .insert(userBiomarkerResults)
-      .values(
-        included.map((r) => ({
-          userId: upload.userId,
-          biomarkerId: r.biomarker_id,
-          value: String(r.value),
-          testedAt: tested_at,
-          labName: lab_name ?? upload.labName ?? null,
-          source: 'lab_upload' as const,
-          labUploadId: upload.id,
-        })),
-      )
-      .returning({ id: userBiomarkerResults.id });
-
-    await db
-      .update(labUploads)
-      .set({ status: 'confirmed', resultCount: inserted.length, testedAt: tested_at })
-      .where(eq(labUploads.id, id));
-
-    await recordScoreSnapshot(upload.userId);
-
-    return c.json({ success: true, imported: inserted.length });
+    const { imported } = await confirmUpload(c.req.param('id'), c.req.valid('json'));
+    return c.json({ success: true, imported });
   },
 );
 
@@ -1170,4 +1105,128 @@ adminRoutes.get('/bookings', async (c) => {
       user_email: r.userEmail,
     })),
   });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lab partners — accounts + area assignment
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** List lab-partner accounts with their assigned areas. */
+adminRoutes.get('/partners', async (c) => {
+  const partners = await db
+    .select()
+    .from(users)
+    .where(eq(users.role, 'lab_partner'))
+    .orderBy(desc(users.createdAt));
+
+  const ids = partners.map((p) => p.id);
+  const assignments = ids.length
+    ? await db
+        .select({
+          partnerId: labPartnerAreas.partnerId,
+          areaId: serviceAreas.id,
+          name: serviceAreas.name,
+          city: serviceAreas.city,
+        })
+        .from(labPartnerAreas)
+        .innerJoin(serviceAreas, eq(labPartnerAreas.areaId, serviceAreas.id))
+        .where(inArray(labPartnerAreas.partnerId, ids))
+    : [];
+
+  const byPartner = new Map<string, { id: string; name: string; city: string }[]>();
+  for (const a of assignments) {
+    const list = byPartner.get(a.partnerId) ?? [];
+    list.push({ id: a.areaId, name: a.name, city: a.city });
+    byPartner.set(a.partnerId, list);
+  }
+
+  return c.json({
+    partners: partners.map((p) => {
+      const areas = byPartner.get(p.id) ?? [];
+      return {
+        id: p.id,
+        email: p.email,
+        full_name: p.fullName,
+        phone: p.phone,
+        area_ids: areas.map((a) => a.id),
+        areas,
+      };
+    }),
+  });
+});
+
+/** Create a lab-partner account (Supabase auth user + users row). */
+adminRoutes.post('/partners', validate('json', createPartnerSchema), async (c) => {
+  const { email, full_name, password, phone } = c.req.valid('json');
+
+  const { data, error } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    phone,
+    email_confirm: true,
+    user_metadata: { full_name },
+  });
+  if (error || !data.user) {
+    if (error?.message?.toLowerCase().includes('already')) {
+      return errorResponse(c, 'conflict', 'An account with this email already exists');
+    }
+    return errorResponse(c, 'unprocessable', error?.message ?? 'Could not create account');
+  }
+
+  const [row] = await db
+    .insert(users)
+    .values({ id: data.user.id, email, fullName: full_name, phone, role: 'lab_partner' })
+    .returning();
+  if (!row) return errorResponse(c, 'server_error', 'Failed to persist partner profile');
+
+  return c.json(
+    {
+      partner: {
+        id: row.id,
+        email: row.email,
+        full_name: row.fullName,
+        phone: row.phone,
+        area_ids: [],
+        areas: [],
+      },
+    },
+    201,
+  );
+});
+
+/** Replace a partner's assigned service areas. */
+adminRoutes.put('/partners/:id/areas', validate('json', assignPartnerAreasSchema), async (c) => {
+  const partnerId = c.req.param('id');
+  const { area_ids } = c.req.valid('json');
+
+  const [partner] = await db
+    .select({ id: users.id, role: users.role })
+    .from(users)
+    .where(eq(users.id, partnerId))
+    .limit(1);
+  if (!partner || partner.role !== 'lab_partner') {
+    return errorResponse(c, 'not_found', 'Lab partner not found');
+  }
+
+  await db.delete(labPartnerAreas).where(eq(labPartnerAreas.partnerId, partnerId));
+  if (area_ids.length > 0) {
+    await db
+      .insert(labPartnerAreas)
+      .values(area_ids.map((areaId) => ({ partnerId, areaId })))
+      .onConflictDoNothing();
+  }
+  return c.json({ success: true, area_ids });
+});
+
+/** Remove a partner: clear area assignments and demote to a regular user. */
+adminRoutes.delete('/partners/:id', async (c) => {
+  const partnerId = c.req.param('id');
+  await db.delete(labPartnerAreas).where(eq(labPartnerAreas.partnerId, partnerId));
+  const [row] = await db
+    .update(users)
+    .set({ role: 'user' })
+    .where(and(eq(users.id, partnerId), eq(users.role, 'lab_partner')))
+    .returning({ id: users.id });
+  if (!row) return errorResponse(c, 'not_found', 'Lab partner not found');
+  return c.json({ success: true });
 });

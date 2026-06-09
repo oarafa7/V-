@@ -5,34 +5,20 @@ import { usePathname } from 'next/navigation';
 
 import { useAuth } from '@/lib/auth';
 
-const NAV = [
-  { href: '/', label: 'Overview' },
-  { href: '/users', label: 'Users' },
-  { href: '/plans', label: 'Plans & Pricing' },
-  { href: '/areas', label: 'Booking Areas' },
-  { href: '/bookings', label: 'Bookings' },
-  { href: '/partners', label: 'Lab Partners' },
-  { href: '/biomarkers', label: 'Biomarkers' },
-  { href: '/categories', label: 'Categories' },
-  { href: '/goals', label: 'Health Goals' },
-  { href: '/content', label: 'App Content' },
-  { href: '/interventions', label: 'Interventions' },
-  { href: '/notifications', label: 'Notifications' },
-  { href: '/ai', label: 'AI Intelligence' },
-];
+const NAV = [{ href: '/', label: 'Appointments' }];
 
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuth();
 
   const isActive = (href: string) =>
-    href === '/' ? pathname === '/' : pathname.startsWith(href);
+    href === '/' ? pathname === '/' || pathname.startsWith('/appointments') : pathname.startsWith(href);
 
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-line bg-panel/60 p-4">
       <div className="px-2 py-3">
         <div className="font-display text-2xl font-extrabold tracking-tight text-ink">VITAL</div>
-        <div className="text-xs text-inkSoft">Admin</div>
+        <div className="text-xs text-inkSoft">Lab Partner</div>
       </div>
       <nav className="mt-4 flex-1 space-y-1">
         {NAV.map((item) => (
@@ -49,7 +35,10 @@ export function Sidebar() {
       </nav>
       <div className="border-t border-line pt-3">
         <div className="px-3 text-xs text-inkMuted">{user?.email}</div>
-        <button onClick={logout} className="mt-2 w-full rounded-lg px-3 py-2 text-left text-sm text-inkSoft hover:bg-panel">
+        <button
+          onClick={logout}
+          className="mt-2 w-full rounded-lg px-3 py-2 text-left text-sm text-inkSoft hover:bg-panel"
+        >
           Sign out
         </button>
       </div>

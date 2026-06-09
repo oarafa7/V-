@@ -423,3 +423,17 @@ export const createBookingSchema = z.object({
   notes: z.string().max(400).optional(),
 });
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
+
+// Lab partner management (admin-created accounts)
+export const createPartnerSchema = z.object({
+  email: z.string().email(),
+  full_name: z.string().min(2).max(120),
+  password: z.string().min(8).max(72),
+  phone: z.string().max(20).optional(),
+});
+export type CreatePartnerInput = z.infer<typeof createPartnerSchema>;
+
+export const assignPartnerAreasSchema = z.object({
+  area_ids: z.array(z.string().uuid()),
+});
+export type AssignPartnerAreasInput = z.infer<typeof assignPartnerAreasSchema>;

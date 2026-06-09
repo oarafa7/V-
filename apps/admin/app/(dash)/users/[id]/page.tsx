@@ -732,7 +732,8 @@ function EditProfileModal({
   const { push } = useToast();
   const [fullName, setFullName] = useState(detail.user.full_name);
   const [phone, setPhone] = useState(detail.user.phone ?? '');
-  const [role, setRole] = useState<'user' | 'admin'>(detail.user.role);
+  // Partner accounts are managed on the Lab Partners page; this toggle is user/admin only.
+  const [role, setRole] = useState<'user' | 'admin'>(detail.user.role === 'admin' ? 'admin' : 'user');
   const [busy, setBusy] = useState(false);
 
   const save = async () => {

@@ -64,6 +64,13 @@
       "when": 1780959979175,
       "tag": "0008_test_booking",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780987358614,
+      "tag": "0009_lab_partner_areas",
+      "breakpoints": true
     }
   ]
 }
