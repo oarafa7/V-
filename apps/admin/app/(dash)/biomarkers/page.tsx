@@ -17,6 +17,7 @@ import {
   Th,
   Textarea,
   EmptyRow,
+  PageHd,
 } from '@/components/ui';
 import type { Biomarker, BiomarkerCategory } from '@vital/shared';
 
@@ -204,10 +205,9 @@ export default function BiomarkersPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-display text-3xl font-bold text-ink">Biomarkers</h1>
+      <PageHd title="Biomarkers" sub="The marker catalog and reference ranges.">
         <Button onClick={openCreate}>Add Biomarker</Button>
-      </div>
+      </PageHd>
 
       <div className="mb-4 flex flex-wrap gap-3">
         <div className="min-w-[240px] flex-1">

@@ -17,6 +17,7 @@ import {
   Th,
   Textarea,
   EmptyRow,
+  PageHd,
 } from '@/components/ui';
 import type { SubscriptionPlan } from '@vital/shared';
 
@@ -134,10 +135,9 @@ export default function PlansPage() {
 
   return (
     <div>
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="font-display text-3xl font-bold text-ink">Plans</h1>
+      <PageHd title="Plans" sub="Subscription tiers and pricing.">
         <Button onClick={openCreate}>Add Plan</Button>
-      </div>
+      </PageHd>
 
       {loading ? (
         <Spinner />

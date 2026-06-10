@@ -18,6 +18,7 @@ import {
   Table,
   Td,
   Th,
+  PageHd,
 } from '@/components/ui';
 import { ApiError, api } from '@/lib/api';
 
@@ -96,14 +97,10 @@ export default function UserDetailPage() {
 
   return (
     <div>
-      <a href="/users" className="text-sm text-inkSoft hover:underline">← All users</a>
-      <div className="mb-6 mt-2 flex items-start justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-bold text-ink">{user.full_name}</h1>
-          <div className="text-inkSoft">{user.email}{user.phone ? ` · ${user.phone}` : ''}</div>
-        </div>
+      <a href="/users" className="mb-2 inline-block text-sm text-accent hover:underline">← All users</a>
+      <PageHd title={user.full_name} sub={`${user.email}${user.phone ? ` · ${user.phone}` : ''}`}>
         <Button variant="outline" onClick={() => setEditOpen(true)}>Edit profile</Button>
-      </div>
+      </PageHd>
 
       {/* Profile + subscription */}
       <div className="grid gap-4 md:grid-cols-2">

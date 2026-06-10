@@ -4,7 +4,7 @@ import type { AppContentInput } from '@vital/shared';
 import { useEffect, useState } from 'react';
 
 import { useToast } from '@/components/toast';
-import { Button, Card, Field, Input, Spinner, Textarea } from '@/components/ui';
+import { Button, Card, Field, Input, PageHd, Spinner, Textarea } from '@/components/ui';
 import { ApiError, api } from '@/lib/api';
 
 export default function ContentPage() {
@@ -36,11 +36,10 @@ export default function ContentPage() {
 
   return (
     <div>
-      <h1 className="mb-2 font-display text-3xl font-bold text-ink">App Content</h1>
-      <p className="mb-6 max-w-2xl text-sm text-inkSoft">
-        Editable copy and partner info surfaced in the mobile app. Changes appear the next time the
-        app loads.
-      </p>
+      <PageHd
+        title="App Content"
+        sub="Editable copy and partner info surfaced in the mobile app — changes appear on next app load."
+      />
 
       <div className="max-w-2xl space-y-6">
         <Card className="p-5">

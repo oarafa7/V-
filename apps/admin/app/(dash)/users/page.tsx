@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { useToast } from '@/components/toast';
-import { EmptyRow, Input, Spinner, StatusPill, Table, Td, Th } from '@/components/ui';
+import { EmptyRow, Input, PageHd, Spinner, StatusPill, Table, Td, Th } from '@/components/ui';
 import { api } from '@/lib/api';
 
 export default function UsersPage() {
@@ -32,10 +32,9 @@ export default function UsersPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-display text-3xl font-bold text-ink">Users</h1>
+      <PageHd title="Users" sub="Accounts, subscriptions, and lab results.">
         <span className="text-sm text-inkSoft">{total} total</span>
-      </div>
+      </PageHd>
 
       <div className="mb-4 max-w-sm">
         <Input placeholder="Search name or email…" value={search} onChange={(e) => setSearch(e.target.value)} />

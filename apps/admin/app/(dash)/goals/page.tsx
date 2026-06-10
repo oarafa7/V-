@@ -15,6 +15,7 @@ import {
   Table,
   Td,
   Th,
+  PageHd,
 } from '@/components/ui';
 import { ApiError, api } from '@/lib/api';
 
@@ -87,13 +88,12 @@ export default function GoalsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-display text-3xl font-bold text-ink">Health Goals</h1>
+      <PageHd
+        title="Health Goals"
+        sub="The goals users pick during onboarding (up to 3). The icon is a Lucide icon name."
+      >
         <Button onClick={openNew}>Add goal</Button>
-      </div>
-      <p className="mb-4 max-w-2xl text-sm text-inkSoft">
-        These are the goals users pick during onboarding (up to 3). The icon is a Lucide icon name.
-      </p>
+      </PageHd>
 
       {loading ? (
         <Spinner />
