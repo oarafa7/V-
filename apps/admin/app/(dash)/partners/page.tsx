@@ -4,7 +4,7 @@ import type { LabPartnerSummary, ServiceArea } from '@vital/shared';
 import { useEffect, useState } from 'react';
 
 import { useToast } from '@/components/toast';
-import { Button, Card, Field, Input, Spinner } from '@/components/ui';
+import { AreaChip, Button, Card, EyebrowLabel, Field, Input, Spinner } from '@/components/ui';
 import { ApiError, api } from '@/lib/api';
 
 export default function PartnersPage() {
@@ -117,27 +117,19 @@ export default function PartnersPage() {
                   Remove
                 </button>
               </div>
-              <div className="text-xs font-mono uppercase tracking-widest text-inkMuted">Assigned areas</div>
-              <div className="mt-2 flex flex-wrap gap-2">
+              <EyebrowLabel>Assigned areas</EyebrowLabel>
+              <div className="flex flex-wrap gap-2">
                 {areas.length === 0 ? (
                   <span className="text-sm text-inkMuted">No service areas exist yet.</span>
                 ) : (
-                  areas.map((a) => {
-                    const on = p.area_ids.includes(a.id);
-                    return (
-                      <button
-                        key={a.id}
-                        onClick={() => toggleArea(p, a.id)}
-                        className="rounded-full border px-3 py-1 text-sm"
-                        style={{
-                          backgroundColor: on ? 'var(--green-ink, #1f6f5c)' : 'transparent',
-                          color: on ? 'white' : undefined,
-                        }}
-                      >
-                        {a.name}
-                      </button>
-                    );
-                  })
+                  areas.map((a) => (
+                    <AreaChip
+                      key={a.id}
+                      label={a.name}
+                      selected={p.area_ids.includes(a.id)}
+                      onClick={() => toggleArea(p, a.id)}
+                    />
+                  ))
                 )}
               </div>
             </Card>

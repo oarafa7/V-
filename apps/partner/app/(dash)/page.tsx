@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { useToast } from '@/components/toast';
-import { EmptyRow, Input, Select, Spinner, StatusPill, Table, Td, Th } from '@/components/ui';
+import { EmptyRow, FilterBar, Input, Select, Spinner, StatusPill, Table, Td, Th } from '@/components/ui';
 import { api } from '@/lib/api';
 
 export default function AppointmentsPage() {
@@ -29,15 +29,15 @@ export default function AppointmentsPage() {
       <h1 className="mb-1 font-display text-3xl font-bold text-ink">Appointments</h1>
       <p className="mb-5 text-sm text-inkSoft">Scheduled home draws in your service areas.</p>
 
-      <div className="mb-4 flex flex-wrap gap-3">
-        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <Select value={status} onChange={(e) => setStatus(e.target.value)}>
+      <FilterBar>
+        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-44" />
+        <Select value={status} onChange={(e) => setStatus(e.target.value)} className="w-44">
           <option value="booked">Booked</option>
           <option value="completed">Completed</option>
           <option value="cancelled">Cancelled</option>
           <option value="">All statuses</option>
         </Select>
-      </div>
+      </FilterBar>
 
       {loading ? (
         <Spinner />
@@ -59,7 +59,7 @@ export default function AppointmentsPage() {
             <EmptyRow colSpan={7} label="No appointments." />
           ) : (
             rows.map((a) => (
-              <tr key={a.id} className="border-b border-line last:border-0 hover:bg-panel/40">
+              <tr key={a.id} className="border-b border-line transition-colors last:border-0 hover:bg-panel/50">
                 <Td className="text-ink">
                   <Link href={`/appointments/${a.user.id}?booking=${a.id}`} className="block">
                     {a.date}
@@ -67,7 +67,7 @@ export default function AppointmentsPage() {
                 </Td>
                 <Td className="text-inkSoft">{a.start_time}–{a.end_time}</Td>
                 <Td className="text-ink">
-                  <Link href={`/appointments/${a.user.id}?booking=${a.id}`} className="font-medium text-greenInk hover:underline">
+                  <Link href={`/appointments/${a.user.id}?booking=${a.id}`} className="font-medium text-accent hover:underline">
                     {a.user.full_name}
                   </Link>
                   <div className="text-xs text-inkMuted">{a.user.phone ?? a.user.email}</div>

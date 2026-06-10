@@ -6,7 +6,18 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import { useToast } from '@/components/toast';
-import { Button, Card, Field, Input, Select, Spinner, StatusPill } from '@/components/ui';
+import {
+  Button,
+  Card,
+  EyebrowLabel,
+  Field,
+  Input,
+  LabelRow,
+  SegmentedTabs,
+  Select,
+  Spinner,
+  StatusPill,
+} from '@/components/ui';
 import { ApiError, api, type BiomarkerOption } from '@/lib/api';
 
 export default function AppointmentDetailPage() {
@@ -17,6 +28,11 @@ export default function AppointmentDetailPage() {
     </Suspense>
   );
 }
+
+const TABS = [
+  { value: 'details' as const, label: 'Details' },
+  { value: 'upload' as const, label: 'Upload Results' },
+];
 
 function AppointmentDetail() {
   const params = useParams<{ id: string }>();
@@ -56,52 +72,43 @@ function AppointmentDetail() {
 
   return (
     <div>
-      <Link href="/" className="mb-3 inline-block text-sm text-greenInk hover:underline">
+      <Link href="/" className="mb-4 inline-flex items-center gap-1 text-sm text-accent hover:underline">
         ← Appointments
       </Link>
 
-      <div className="mb-4 flex items-end gap-4">
+      <div className="mb-5 flex flex-wrap items-end gap-4">
         <h1 className="font-display text-3xl font-bold text-ink">{user.full_name}</h1>
         {/* Tabs next to the patient name */}
-        <div className="mb-1 flex gap-1 rounded-lg bg-panel p-1">
-          {(['details', 'upload'] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
-                tab === t ? 'bg-card text-greenInk shadow-sm' : 'text-inkSoft'
-              }`}
-            >
-              {t === 'details' ? 'Details' : 'Upload Results'}
-            </button>
-          ))}
-        </div>
+        <SegmentedTabs tabs={TABS} active={tab} onChange={setTab} />
       </div>
 
       {tab === 'details' ? (
         <div className="grid gap-4 md:grid-cols-2">
           {/* 1a. Patient details */}
-          <Card className="p-4">
-            <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-inkMuted">Patient</h3>
-            <Row label="Name" value={user.full_name} />
-            <Row label="Email" value={user.email} />
-            <Row label="Phone" value={user.phone ?? '—'} />
-            <Row label="Date of birth" value={user.date_of_birth ?? '—'} />
-            <Row label="Gender" value={user.gender ?? '—'} />
+          <Card className="p-5">
+            <EyebrowLabel>Patient</EyebrowLabel>
+            <LabelRow label="Name" value={user.full_name} />
+            <LabelRow label="Email" value={user.email} copyable />
+            <LabelRow label="Phone" value={user.phone ?? '—'} copyable />
+            <LabelRow label="Date of birth" value={user.date_of_birth ?? '—'} />
+            <LabelRow label="Gender" value={user.gender ?? '—'} />
           </Card>
 
           {/* 1b. Lab tests required (from subscription plan) */}
-          <Card className="p-4">
-            <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-inkMuted">Lab tests required</h3>
+          <Card className="p-5">
+            <EyebrowLabel>Lab tests required</EyebrowLabel>
             {plan ? (
               <>
-                <Row label="Plan" value={plan.name} />
-                <Row label="Biomarkers" value={`${plan.biomarker_count} markers`} />
-                <Row label="Annual tests" value={String(plan.annual_tests_count)} />
+                <LabelRow label="Plan" value={plan.name} />
+                <LabelRow label="Biomarkers" value={`${plan.biomarker_count} markers`} />
+                <LabelRow label="Annual tests" value={String(plan.annual_tests_count)} />
                 {plan.features.length > 0 ? (
-                  <ul className="mt-2 list-disc pl-5 text-sm text-inkSoft">
+                  <ul className="mt-3 space-y-1">
                     {plan.features.map((f, i) => (
-                      <li key={i}>{f}</li>
+                      <li key={i} className="flex gap-2 text-sm text-inkSoft">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-green" />
+                        {f}
+                      </li>
                     ))}
                   </ul>
                 ) : null}
@@ -112,16 +119,24 @@ function AppointmentDetail() {
           </Card>
 
           {/* 1c. Scheduled appointment */}
-          <Card className="p-4">
-            <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-inkMuted">Scheduled appointment</h3>
+          <Card className="p-5">
+            <EyebrowLabel>Scheduled appointment</EyebrowLabel>
             {appointment ? (
               <>
-                <Row label="Date" value={appointment.date} />
-                <Row label="Time" value={`${appointment.start_time}–${appointment.end_time}`} />
-                <Row label="Area" value={appointment.area_name} />
-                <Row label="Address" value={appointment.address ?? '—'} />
-                <div className="mt-1">
-                  <StatusPill status={appointment.status === 'booked' ? 'active' : appointment.status === 'cancelled' ? 'expired' : 'cancelled'} />
+                <LabelRow label="Date" value={appointment.date} />
+                <LabelRow label="Time" value={`${appointment.start_time}–${appointment.end_time}`} />
+                <LabelRow label="Area" value={appointment.area_name} />
+                <LabelRow label="Address" value={appointment.address ?? '—'} copyable />
+                <div className="mt-3">
+                  <StatusPill
+                    status={
+                      appointment.status === 'booked'
+                        ? 'active'
+                        : appointment.status === 'cancelled'
+                          ? 'expired'
+                          : 'cancelled'
+                    }
+                  />
                 </div>
               </>
             ) : (
@@ -130,10 +145,12 @@ function AppointmentDetail() {
           </Card>
 
           {/* 1d. Notes */}
-          <Card className="p-4">
-            <h3 className="mb-2 font-display text-sm font-bold uppercase tracking-wide text-inkMuted">Notes</h3>
-            <div className="text-sm text-ink">{appointment?.notes?.trim() || 'No notes provided.'}</div>
-            <div className="mt-4 text-xs text-inkMuted">
+          <Card className="p-5">
+            <EyebrowLabel>Notes</EyebrowLabel>
+            <p className="text-sm leading-relaxed text-ink">
+              {appointment?.notes?.trim() || 'No notes provided.'}
+            </p>
+            <div className="mt-4 border-t border-line pt-3 text-xs text-inkMuted">
               {detail.results.length} result(s) on file · {detail.lab_uploads.length} upload(s)
             </div>
           </Card>
@@ -145,18 +162,23 @@ function AppointmentDetail() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between border-b border-line py-1.5 text-sm last:border-0">
-      <span className="text-inkMuted">{label}</span>
-      <span className="text-ink">{value}</span>
-    </div>
-  );
-}
-
 interface ReviewRow extends ParsedLabRow {
   _value: string;
 }
+
+// Low-confidence rows are tinted amber so the partner verifies them.
+const confTint = (c: number) =>
+  c < 0.6
+    ? { backgroundColor: 'rgba(205,162,78,.12)', borderColor: 'rgba(205,162,78,.30)' }
+    : c < 0.75
+      ? { backgroundColor: 'rgba(205,162,78,.06)', borderColor: 'rgba(205,162,78,.20)' }
+      : { borderColor: '#E7DECC' };
+const confColor = (c: number) =>
+  c < 0.6 ? 'text-amber font-medium' : c < 0.75 ? 'text-amber/80' : 'text-inkMuted';
+const confLabel = (c: number) => {
+  const p = Math.round(c * 100);
+  return c < 0.6 ? `${p}% — low` : `${p}%`;
+};
 
 function UploadTab({
   userId,
@@ -230,47 +252,74 @@ function UploadTab({
     }
   };
 
+  const selectedCount = rows.filter((r) => r.include && r.biomarker_id && r._value !== '').length;
+
   return (
-    <Card className="p-4">
-      <div className="mb-4 flex flex-wrap items-end gap-3">
+    <Card className="p-5">
+      <div className="mb-5 flex flex-wrap items-end gap-3">
         <Field label="Lab PDF">
           <input
             type="file"
             accept="application/pdf"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="text-sm text-inkSoft"
+            className="block text-sm text-inkSoft file:mr-3 file:rounded-lg file:border-0 file:bg-panel file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-inkSoft hover:file:bg-line"
           />
         </Field>
         <Field label="Lab name">
           <Input className="w-44" value={labName} onChange={(e) => setLabName(e.target.value)} placeholder="Cairo Labs" />
         </Field>
         <Field label="Test date">
-          <Input type="date" value={testedAt} onChange={(e) => setTestedAt(e.target.value)} />
+          <Input type="date" className="w-44" value={testedAt} onChange={(e) => setTestedAt(e.target.value)} />
         </Field>
-        <Button onClick={doUpload} disabled={busy || !file}>
+        <Button variant="outline" onClick={doUpload} disabled={busy || !file}>
           {busy && !upload ? 'Uploading…' : 'Upload & parse'}
         </Button>
       </div>
 
-      {upload && rows.length > 0 ? (
+      {!upload ? (
+        <p className="text-xs italic text-inkMuted">
+          Select a PDF, then click &quot;Upload &amp; parse&quot; to review extracted values.
+        </p>
+      ) : rows.length > 0 ? (
         <div>
-          <h3 className="mb-2 font-display text-sm font-bold text-ink">Review parsed results</h3>
-          <p className="mb-3 text-xs text-inkMuted">
-            Each row shows the biomarker we matched from the PDF — remap it with the dropdown if it's
-            wrong, or map an unmatched row. Uncheck anything you don't want to import.
-          </p>
-          <div className="space-y-1">
+          <div className="mb-3 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-display text-base font-bold text-ink">Review parsed results</h3>
+              <p className="mt-0.5 text-xs text-inkMuted">
+                Remap rows with the dropdown; uncheck what you don&apos;t want to import. Amber rows
+                have low match confidence — verify against the source PDF.
+              </p>
+            </div>
+            {upload.file_url ? (
+              <a
+                href={upload.file_url}
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 text-xs text-accent hover:underline"
+              >
+                View source PDF ↗
+              </a>
+            ) : null}
+          </div>
+          <div className="space-y-1.5">
             {rows.map((r, i) => {
               const mapped = Boolean(r.biomarker_id);
               return (
-                <div key={i} className="flex items-center gap-3 rounded border border-line px-3 py-2 text-sm">
+                <div
+                  key={i}
+                  className="flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition"
+                  style={confTint(r.confidence)}
+                >
                   <input
                     type="checkbox"
+                    className="h-4 w-4 shrink-0 cursor-pointer accent-accent disabled:cursor-not-allowed"
                     disabled={!mapped || r._value === ''}
                     checked={r.include && mapped}
-                    onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, include: e.target.checked } : x)))}
+                    onChange={(e) =>
+                      setRows(rows.map((x, j) => (j === i ? { ...x, include: e.target.checked } : x)))
+                    }
                   />
-                  <div className="flex-1">
+                  <div className="min-w-0 flex-1">
                     <Select
                       value={r.biomarker_id ?? ''}
                       onChange={(e) =>
@@ -280,7 +329,6 @@ function UploadTab({
                               ? {
                                   ...x,
                                   biomarker_id: e.target.value || null,
-                                  // auto-include once it's mapped and has a value
                                   include: Boolean(e.target.value) && x._value !== '',
                                 }
                               : x,
@@ -295,26 +343,35 @@ function UploadTab({
                         </option>
                       ))}
                     </Select>
-                    <div className="mt-0.5 text-xs text-inkMuted">from PDF: {r.biomarker_name}</div>
+                    <div className="mt-0.5 text-xs text-inkMuted">
+                      from PDF: <span className="font-medium">{r.biomarker_name}</span>
+                    </div>
                   </div>
                   <Input
-                    className="w-24"
+                    className="w-24 text-right tabular-nums"
                     value={r._value}
                     onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, _value: e.target.value } : x)))}
                   />
-                  <span className="w-12 text-xs text-inkMuted">{unitFor(r.biomarker_id)}</span>
-                  <span className="w-14 text-right text-xs text-inkMuted">{Math.round(r.confidence * 100)}%</span>
+                  <span className="w-12 shrink-0 text-xs text-inkMuted">{unitFor(r.biomarker_id)}</span>
+                  <span className={`w-24 shrink-0 text-right text-xs ${confColor(r.confidence)}`}>
+                    {confLabel(r.confidence)}
+                  </span>
                 </div>
               );
             })}
           </div>
-          <div className="mt-4 flex justify-end">
-            <Button onClick={confirm} disabled={busy}>
+          <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
+            <span className="text-xs text-inkMuted">
+              {selectedCount} of {rows.length} selected
+            </span>
+            <Button className="px-6" onClick={confirm} disabled={busy || selectedCount === 0}>
               {busy ? 'Importing…' : 'Import selected'}
             </Button>
           </div>
         </div>
-      ) : null}
+      ) : (
+        <p className="text-xs italic text-inkMuted">No values could be auto-detected in that PDF.</p>
+      )}
     </Card>
   );
 }

@@ -26,7 +26,7 @@ export function Sidebar() {
             key={item.href}
             href={item.href}
             className={`block rounded-lg px-3 py-2.5 text-sm font-medium transition ${
-              isActive(item.href) ? 'bg-accent/15 text-greenInk' : 'text-inkSoft hover:bg-panel'
+              isActive(item.href) ? 'bg-accent/10 text-accent' : 'text-inkSoft hover:bg-panel hover:text-ink'
             }`}
           >
             {item.label}
