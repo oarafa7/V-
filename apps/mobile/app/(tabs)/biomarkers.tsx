@@ -1,31 +1,33 @@
 /**
- * Biomarker Library — category overview cards, search, category + status
- * filters, sort, and a grid/list of biomarker cards. Gated behind an active
- * subscription.
+ * Labs Summary — the biomarker panel. A radial status dial + breakdown of the
+ * user's markers, a data-derived insight, search + filter, a status-grouped
+ * marker list with mini range bars, and the contributing tests (history).
+ * Gated behind an active subscription.
  */
+import { type BiomarkerStatus, STATUS_LABELS, type UserBiomarkerResult } from '@vital/shared';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FilterPills, type PillOption } from '@/components/biomarker/FilterPills';
+import { StatusDial } from '@/components/biomarker/StatusDial';
 import {
-  BiomarkerCard,
-  CategoryCard,
   EmptyState,
   LucideIcon,
+  RangeBar,
   SectionHeader,
   SkeletonList,
+  StatusBadge,
 } from '@/components/ui';
-import { colors } from '@/constants/theme';
-import {
-  filterBiomarkers,
-  sortBiomarkers,
-  summariseByCategory,
-} from '@/lib/library-select';
+import { colors, statusColors } from '@/constants/theme';
+import { formatNumber } from '@/lib/format';
+import { filterBiomarkers, sortBiomarkers } from '@/lib/library-select';
+import { resultApi } from '@/lib/api';
 import { useBiomarkerStore, type SortKey, type StatusFilter } from '@/lib/store/biomarkers';
 import { useLibraryStore } from '@/lib/store/library';
 import { useSubscriptionStore } from '@/lib/store/subscription';
+import type { BiomarkerWithResult } from '@vital/shared';
 
 const STATUS_OPTIONS: PillOption[] = [
   { value: 'all', label: 'All' },
@@ -36,11 +38,21 @@ const STATUS_OPTIONS: PillOption[] = [
 ];
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: 'category', label: 'Category' },
   { value: 'name', label: 'Name' },
   { value: 'last_tested', label: 'Last tested' },
-  { value: 'status', label: 'Status' },
 ];
+
+// Section titles for the grouped list (alert reads as "Out of Range").
+const GROUP_TITLE: Record<BiomarkerStatus, string> = {
+  alert: 'Out of Range',
+  suboptimal: 'Review',
+  optimal: 'Optimal',
+  untested: 'Untested',
+};
+const GROUP_ORDER: BiomarkerStatus[] = ['alert', 'suboptimal', 'optimal', 'untested'];
+
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
 export default function BiomarkersTab() {
   const router = useRouter();
@@ -51,29 +63,69 @@ export default function BiomarkersTab() {
   const { biomarkers, categories, loaded, loading, error, fetch } = useLibraryStore();
   const ui = useBiomarkerStore();
   const [sortOpen, setSortOpen] = useState(false);
+  const [results, setResults] = useState<UserBiomarkerResult[]>([]);
 
   useEffect(() => {
-    if (hasActive()) void fetch();
+    if (!hasActive()) return;
+    void fetch();
+    resultApi
+      .all()
+      .then((r) => setResults(r.results))
+      .catch(() => {});
   }, [hasActive, fetch]);
 
-  const summaries = useMemo(() => summariseByCategory(biomarkers), [biomarkers]);
+  // Status counts across the whole panel.
+  const counts = useMemo(() => {
+    const c = { optimal: 0, suboptimal: 0, alert: 0, untested: 0 };
+    for (const b of biomarkers) c[b.status] += 1;
+    return c;
+  }, [biomarkers]);
+  const tested = counts.optimal + counts.suboptimal + counts.alert;
+  const total = biomarkers.length;
 
-  const visible = useMemo(() => {
-    const filtered = filterBiomarkers(biomarkers, {
-      category: ui.category,
-      status: ui.status,
-      search: ui.search,
+  // Insight: the category with the most out-of-range markers.
+  const insight = useMemo(() => {
+    if (counts.alert === 0) return null;
+    const byCat = new Map<string, number>();
+    for (const b of biomarkers) {
+      if (b.status === 'alert') byCat.set(b.category_id, (byCat.get(b.category_id) ?? 0) + 1);
+    }
+    let topId: string | null = null;
+    let topN = 0;
+    byCat.forEach((nn, id) => {
+      if (nn > topN) {
+        topN = nn;
+        topId = id;
+      }
     });
-    return sortBiomarkers(filtered, ui.sort);
-  }, [biomarkers, ui.category, ui.status, ui.search, ui.sort]);
+    const cat = categories.find((c) => c.id === topId);
+    return cat ? { cat, n: topN } : null;
+  }, [biomarkers, categories, counts.alert]);
 
-  const categoryPills: PillOption[] = useMemo(
-    () => [
-      { value: 'all', label: 'All' },
-      ...categories.map((c) => ({ value: c.slug, label: c.name, color: c.color })),
-    ],
-    [categories],
-  );
+  // Filtered + sorted, then grouped by status.
+  const groups = useMemo(() => {
+    const filtered = sortBiomarkers(
+      filterBiomarkers(biomarkers, { category: 'all', status: ui.status, search: ui.search }),
+      ui.sort,
+    );
+    return GROUP_ORDER.map((status) => ({
+      status,
+      items: filtered.filter((b) => b.status === status),
+    })).filter((g) => g.items.length > 0);
+  }, [biomarkers, ui.status, ui.search, ui.sort]);
+
+  // Contributing tests — results grouped by test date.
+  const tests = useMemo(() => {
+    const byDate = new Map<string, { date: string; count: number; lab: string | null }>();
+    for (const r of results) {
+      const g = byDate.get(r.tested_at) ?? { date: r.tested_at, count: 0, lab: r.lab_name };
+      g.count += 1;
+      if (!g.lab && r.lab_name) g.lab = r.lab_name;
+      byDate.set(r.tested_at, g);
+    }
+    return [...byDate.values()].sort((a, b) => b.date.localeCompare(a.date));
+  }, [results]);
+  const latest = tests[0];
 
   // ── Subscription gate ──
   if (subLoaded && !hasActive()) {
@@ -90,6 +142,8 @@ export default function BiomarkersTab() {
     );
   }
 
+  const toggleStatus = (s: StatusFilter) => ui.setStatus(ui.status === s ? 'all' : s);
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.obsidian }}>
       <ScrollView
@@ -97,128 +151,24 @@ export default function BiomarkersTab() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Header */}
         <View className="px-5">
           <Text className="font-display" style={{ color: colors.white, fontSize: 32 }}>
-            Biomarkers
+            Labs Summary
+          </Text>
+          <Text className="mt-1 font-body" style={{ color: colors.textDim, fontSize: 14, lineHeight: 20 }}>
+            {latest
+              ? `${latest.count} biomarkers updated from your test on ${fmtDate(latest.date)}.`
+              : 'Your biomarker panel — results appear here after your first test.'}
           </Text>
         </View>
 
-        {/* Category overview row */}
-        {categories.length > 0 ? (
-          <View className="mt-5">
-            <View className="px-5">
-              <SectionHeader title="Categories" />
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 20 }}
-            >
-              {categories.map((c) => {
-                const s = summaries[c.slug];
-                return (
-                  <CategoryCard
-                    key={c.id}
-                    name={c.name}
-                    icon={c.icon}
-                    color={c.color}
-                    total={s?.total ?? 0}
-                    optimal={s?.optimal ?? 0}
-                    review={s?.suboptimal ?? 0}
-                    onPress={() => router.push(`/biomarker/category/${c.slug}`)}
-                  />
-                );
-              })}
-            </ScrollView>
+        {loading && !loaded ? (
+          <View className="mt-6 px-5">
+            <SkeletonList count={6} />
           </View>
-        ) : null}
-
-        {/* Search */}
-        <View className="mt-6 px-5">
-          <View
-            className="flex-row items-center rounded-md border px-3"
-            style={{ backgroundColor: colors.surface, borderColor: colors.border }}
-          >
-            <LucideIcon name="Search" size={16} color={colors.textDim} />
-            <TextInput
-              value={ui.search}
-              onChangeText={ui.setSearch}
-              placeholder="Search name, description, tags"
-              placeholderTextColor={colors.textMuted}
-              className="ml-2 flex-1 py-3 font-body"
-              style={{ color: colors.white, fontSize: 14 }}
-            />
-            {ui.search ? (
-              <Pressable onPress={() => ui.setSearch('')} hitSlop={8}>
-                <LucideIcon name="X" size={16} color={colors.textDim} />
-              </Pressable>
-            ) : null}
-          </View>
-        </View>
-
-        {/* Category pills */}
-        <View className="mt-4 px-5">
-          <FilterPills options={categoryPills} value={ui.category} onChange={ui.setCategory} />
-        </View>
-
-        {/* Status filter + view + sort */}
-        <View className="mt-3 px-5">
-          <FilterPills
-            options={STATUS_OPTIONS}
-            value={ui.status}
-            onChange={(v) => ui.setStatus(v as StatusFilter)}
-          />
-        </View>
-
-        <View className="mt-3 flex-row items-center justify-between px-5">
-          <Pressable
-            className="flex-row items-center"
-            onPress={() => setSortOpen((o) => !o)}
-            hitSlop={8}
-          >
-            <LucideIcon name="ArrowUpDown" size={14} color={colors.textDim} />
-            <Text className="ml-1.5 font-mono" style={{ color: colors.textDim, fontSize: 12 }}>
-              {SORT_OPTIONS.find((s) => s.value === ui.sort)?.label}
-            </Text>
-          </Pressable>
-          <Pressable onPress={ui.toggleView} hitSlop={8}>
-            <LucideIcon
-              name={ui.view === 'grid' ? 'List' : 'LayoutGrid'}
-              size={18}
-              color={colors.textDim}
-            />
-          </Pressable>
-        </View>
-
-        {sortOpen ? (
-          <View className="mt-2 px-5">
-            <View className="rounded-md border" style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
-              {SORT_OPTIONS.map((opt) => (
-                <Pressable
-                  key={opt.value}
-                  className="flex-row items-center justify-between px-4 py-3"
-                  onPress={() => {
-                    ui.setSort(opt.value);
-                    setSortOpen(false);
-                  }}
-                >
-                  <Text className="font-body" style={{ color: colors.text, fontSize: 14 }}>
-                    {opt.label}
-                  </Text>
-                  {ui.sort === opt.value ? (
-                    <LucideIcon name="Check" size={16} color={colors.gold} />
-                  ) : null}
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        ) : null}
-
-        {/* List / grid */}
-        <View className="mt-4 px-5">
-          {loading && !loaded ? (
-            <SkeletonList count={8} />
-          ) : error ? (
+        ) : error ? (
+          <View className="mt-6 px-5">
             <EmptyState
               icon="TriangleAlert"
               title="Couldn't load biomarkers"
@@ -226,38 +176,280 @@ export default function BiomarkersTab() {
               ctaLabel="Retry"
               onCta={() => fetch(true)}
             />
-          ) : visible.length === 0 ? (
-            <EmptyState
-              icon="SearchX"
-              title="No biomarkers found"
-              message="Try clearing filters or your search term."
-            />
-          ) : ui.view === 'grid' ? (
-            <View className="flex-row flex-wrap" style={{ marginHorizontal: -4 }}>
-              {visible.map((b) => (
-                <View key={b.id} style={{ width: '50%' }}>
-                  <BiomarkerCard
-                    biomarker={b}
-                    view="grid"
-                    highlight={ui.search}
-                    onPress={() => router.push(`/biomarker/${b.id}`)}
-                  />
-                </View>
-              ))}
-            </View>
-          ) : (
-            visible.map((b) => (
-              <BiomarkerCard
-                key={b.id}
-                biomarker={b}
-                view="list"
-                highlight={ui.search}
-                onPress={() => router.push(`/biomarker/${b.id}`)}
+          </View>
+        ) : (
+          <>
+            {/* Dial hero */}
+            <View className="mt-4 items-center">
+              <StatusDial
+                counts={counts}
+                size={224}
+                centerValue={tested}
+                centerLabel="Biomarkers"
               />
-            ))
-          )}
-        </View>
+              <Text className="mt-2 font-body" style={{ color: colors.textDim, fontSize: 13 }}>
+                {total > tested ? `${tested} of ${total} markers tested` : `${tested} markers tracked`}
+              </Text>
+            </View>
+
+            {/* Breakdown cards */}
+            <View className="mt-5 flex-row px-5" style={{ gap: 10 }}>
+              {(['optimal', 'suboptimal', 'alert'] as BiomarkerStatus[]).map((st) => {
+                const active = ui.status === st;
+                return (
+                  <Pressable
+                    key={st}
+                    onPress={() => toggleStatus(st)}
+                    className="flex-1 rounded-lg border p-3"
+                    style={{
+                      backgroundColor: colors.surface,
+                      borderColor: active ? statusColors[st] : colors.border,
+                    }}
+                  >
+                    <Text className="font-display" style={{ color: statusColors[st], fontSize: 26 }}>
+                      {counts[st]}
+                    </Text>
+                    <View className="mt-1 flex-row items-center" style={{ gap: 5 }}>
+                      <View
+                        className="rounded-full"
+                        style={{ width: 6, height: 6, backgroundColor: statusColors[st] }}
+                      />
+                      <Text className="font-body" style={{ color: colors.textDim, fontSize: 12 }}>
+                        {st === 'alert' ? 'Out of Range' : STATUS_LABELS[st]}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Insight callout */}
+            {insight ? (
+              <Pressable
+                onPress={() => router.push(`/biomarker/category/${insight.cat.slug}`)}
+                className="mx-5 mt-5 rounded-xl border p-4"
+                style={{ borderColor: colors.gold, backgroundColor: `${colors.gold}0D` }}
+              >
+                <Text className="font-body" style={{ color: colors.white, fontSize: 14, lineHeight: 20 }}>
+                  <Text style={{ fontWeight: '700' }}>{insight.cat.name}</Text> has {insight.n}{' '}
+                  {insight.n === 1 ? 'marker' : 'markers'} out of range — the top area to focus on
+                  right now.
+                </Text>
+                <View className="mt-2 flex-row items-center" style={{ gap: 6 }}>
+                  <Text
+                    className="font-mono uppercase tracking-widest"
+                    style={{ color: colors.gold, fontSize: 11 }}
+                  >
+                    Explore your labs in detail
+                  </Text>
+                  <LucideIcon name="ArrowRight" size={14} color={colors.gold} />
+                </View>
+              </Pressable>
+            ) : null}
+
+            {/* Search */}
+            <View className="mt-5 px-5">
+              <View
+                className="flex-row items-center rounded-md border px-3"
+                style={{ backgroundColor: colors.surface, borderColor: colors.border }}
+              >
+                <LucideIcon name="Search" size={16} color={colors.textDim} />
+                <TextInput
+                  value={ui.search}
+                  onChangeText={ui.setSearch}
+                  placeholder="Search for Vitamin D, Cortisol, etc."
+                  placeholderTextColor={colors.textMuted}
+                  className="ml-2 flex-1 py-3 font-body"
+                  style={{ color: colors.white, fontSize: 14 }}
+                />
+                {ui.search ? (
+                  <Pressable onPress={() => ui.setSearch('')} hitSlop={8}>
+                    <LucideIcon name="X" size={16} color={colors.textDim} />
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+
+            {/* Filter + sort */}
+            <View className="mt-3 px-5">
+              <FilterPills
+                options={STATUS_OPTIONS}
+                value={ui.status}
+                onChange={(v) => ui.setStatus(v as StatusFilter)}
+              />
+            </View>
+            <View className="mt-3 px-5">
+              <Pressable
+                className="flex-row items-center justify-between rounded-md border px-4 py-3"
+                style={{ backgroundColor: colors.surface, borderColor: colors.border }}
+                onPress={() => setSortOpen((o) => !o)}
+              >
+                <Text
+                  className="font-mono uppercase tracking-widest"
+                  style={{ color: colors.textDim, fontSize: 12 }}
+                >
+                  Filter & sort
+                </Text>
+                <View className="flex-row items-center" style={{ gap: 6 }}>
+                  <Text className="font-body" style={{ color: colors.text, fontSize: 13 }}>
+                    {SORT_OPTIONS.find((s) => s.value === ui.sort)?.label ?? 'Name'}
+                  </Text>
+                  <LucideIcon name={sortOpen ? 'ChevronUp' : 'ChevronDown'} size={16} color={colors.textDim} />
+                </View>
+              </Pressable>
+              {sortOpen ? (
+                <View
+                  className="mt-2 rounded-md border"
+                  style={{ backgroundColor: colors.surface, borderColor: colors.border }}
+                >
+                  {SORT_OPTIONS.map((opt) => (
+                    <Pressable
+                      key={opt.value}
+                      className="flex-row items-center justify-between px-4 py-3"
+                      onPress={() => {
+                        ui.setSort(opt.value);
+                        setSortOpen(false);
+                      }}
+                    >
+                      <Text className="font-body" style={{ color: colors.text, fontSize: 14 }}>
+                        {opt.label}
+                      </Text>
+                      {ui.sort === opt.value ? (
+                        <LucideIcon name="Check" size={16} color={colors.gold} />
+                      ) : null}
+                    </Pressable>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+
+            {/* Grouped marker list */}
+            <View className="mt-5 px-5">
+              {groups.length === 0 ? (
+                <EmptyState
+                  icon="SearchX"
+                  title="No biomarkers found"
+                  message="Try clearing your search or filters."
+                />
+              ) : (
+                groups.map((g) => (
+                  <View key={g.status} className="mb-5">
+                    <View className="mb-1 flex-row items-center justify-between">
+                      <View className="flex-row items-center" style={{ gap: 8 }}>
+                        <View
+                          className="rounded-full"
+                          style={{ width: 8, height: 8, backgroundColor: statusColors[g.status] }}
+                        />
+                        <Text className="font-display" style={{ color: colors.white, fontSize: 18 }}>
+                          {GROUP_TITLE[g.status]}
+                        </Text>
+                      </View>
+                      <Text className="font-body" style={{ color: colors.textDim, fontSize: 13 }}>
+                        {g.items.length} {g.items.length === 1 ? 'biomarker' : 'biomarkers'}
+                      </Text>
+                    </View>
+                    {g.items.map((b) => (
+                      <BiomarkerRangeRow
+                        key={b.id}
+                        biomarker={b}
+                        onPress={() => router.push(`/biomarker/${b.id}`)}
+                      />
+                    ))}
+                  </View>
+                ))
+              )}
+            </View>
+
+            {/* Contributing tests / history */}
+            {tests.length > 0 ? (
+              <View className="mt-1 px-5">
+                <SectionHeader title="Contributing tests" />
+                <View
+                  className="mt-2 overflow-hidden rounded-lg border"
+                  style={{ borderColor: colors.border, backgroundColor: colors.surface }}
+                >
+                  {tests.map((t, i) => (
+                    <View
+                      key={t.date}
+                      className="flex-row items-center justify-between px-4 py-3"
+                      style={
+                        i < tests.length - 1
+                          ? { borderBottomWidth: 1, borderBottomColor: colors.border }
+                          : undefined
+                      }
+                    >
+                      <View className="flex-row items-center" style={{ gap: 10 }}>
+                        <LucideIcon name="FileText" size={18} color={colors.textDim} />
+                        <View>
+                          <Text className="font-body" style={{ color: colors.white, fontSize: 14 }}>
+                            {fmtDate(t.date)}
+                          </Text>
+                          <Text className="font-body" style={{ color: colors.textDim, fontSize: 12 }}>
+                            {t.count} {t.count === 1 ? 'marker' : 'markers'}
+                            {t.lab ? ` · ${t.lab}` : ''}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </>
+        )}
       </ScrollView>
     </View>
+  );
+}
+
+/** A list row: name, value, status badge, and a compact range bar. */
+function BiomarkerRangeRow({
+  biomarker: b,
+  onPress,
+}: {
+  biomarker: BiomarkerWithResult;
+  onPress: () => void;
+}) {
+  const value = b.latest_result?.value ?? null;
+  const hasValue = value !== null && value !== undefined;
+  return (
+    <Pressable
+      onPress={onPress}
+      className="border-b py-3"
+      style={{ borderBottomColor: colors.border }}
+    >
+      <View className="flex-row items-center">
+        <Text className="flex-1 font-body" style={{ color: colors.white, fontSize: 16 }}>
+          {b.name}
+        </Text>
+        {hasValue ? (
+          <Text className="font-display" style={{ color: colors.white, fontSize: 18 }}>
+            {formatNumber(value)}{' '}
+            <Text className="font-body" style={{ color: colors.textDim, fontSize: 12 }}>
+              {b.unit}
+            </Text>
+          </Text>
+        ) : null}
+        <LucideIcon name="ChevronRight" size={16} color={colors.textMuted} />
+      </View>
+      <View className="mt-2 flex-row items-center" style={{ gap: 10 }}>
+        <StatusBadge status={b.status} size="sm" />
+        {hasValue ? (
+          <View className="flex-1">
+            <RangeBar
+              range={b}
+              value={value}
+              unit={b.unit}
+              mode="optimal"
+              compact
+            />
+          </View>
+        ) : (
+          <Text className="font-body" style={{ color: colors.textMuted, fontSize: 12 }}>
+            Not tested yet
+          </Text>
+        )}
+      </View>
+    </Pressable>
   );
 }

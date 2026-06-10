@@ -23,9 +23,11 @@ interface Props {
   value?: number | null;
   unit: string;
   mode?: 'optimal' | 'normal';
+  /** Bar only — hides the threshold labels (for dense list rows). */
+  compact?: boolean;
 }
 
-export function RangeBar({ range, value, unit, mode = 'optimal' }: Props) {
+export function RangeBar({ range, value, unit, mode = 'optimal', compact = false }: Props) {
   const [width, setWidth] = useState(0);
   const { optimal_low, optimal_high, normal_low, normal_high } = range;
 
@@ -96,6 +98,7 @@ export function RangeBar({ range, value, unit, mode = 'optimal' }: Props) {
       </View>
 
       {/* Threshold labels */}
+      {compact ? null : (
       <View className="mt-2 flex-row justify-between">
         <Text className="font-mono" style={{ color: colors.textDim, fontSize: 10 }}>
           {formatNumber(emphasised[0]!)}
@@ -107,6 +110,7 @@ export function RangeBar({ range, value, unit, mode = 'optimal' }: Props) {
           {formatNumber(emphasised[1]!)}
         </Text>
       </View>
+      )}
     </View>
   );
 }
