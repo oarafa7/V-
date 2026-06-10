@@ -261,3 +261,48 @@ export function EmptyRow({ colSpan, label }: { colSpan: number; label: string })
     </tr>
   );
 }
+
+/** Page header — title + optional subtitle, with right-aligned actions. */
+export function PageHd({
+  title,
+  sub,
+  children,
+}: {
+  title: string;
+  sub?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="mb-6 flex items-start justify-between gap-4">
+      <div>
+        <h1 className="font-display text-3xl font-bold text-ink">{title}</h1>
+        {sub ? <p className="mt-1 text-sm text-inkSoft">{sub}</p> : null}
+      </div>
+      {children ? <div className="flex shrink-0 items-center gap-2">{children}</div> : null}
+    </div>
+  );
+}
+
+/** KPI stat card — eyebrow label, big number, optional hint. */
+export function KPICard({
+  label,
+  value,
+  hint,
+  tone = 'ink',
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: 'ink' | 'accent' | 'alert';
+}) {
+  const valueColor = tone === 'alert' ? 'text-rust' : tone === 'accent' ? 'text-accent' : 'text-ink';
+  return (
+    <Card className="p-5">
+      <EyebrowLabel className="mb-0">{label}</EyebrowLabel>
+      <div className={`mt-3 font-display text-3xl font-extrabold tracking-tight ${valueColor}`}>
+        {value}
+      </div>
+      {hint ? <div className="mt-1 text-xs text-inkMuted">{hint}</div> : null}
+    </Card>
+  );
+}

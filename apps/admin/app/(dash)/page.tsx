@@ -4,18 +4,11 @@ import type { AdminOverview } from '@vital/shared';
 import { useEffect, useState } from 'react';
 
 import { useToast } from '@/components/toast';
-import { Card, Spinner } from '@/components/ui';
+import { Card, EyebrowLabel, KPICard, PageHd, Spinner } from '@/components/ui';
 import { api } from '@/lib/api';
 
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <Card className="p-5">
-      <div className="text-xs font-medium uppercase tracking-wide text-inkMuted">{label}</div>
-      <div className="mt-2 font-display text-4xl font-extrabold text-ink">{value}</div>
-      {hint ? <div className="mt-1 text-sm text-inkSoft">{hint}</div> : null}
-    </Card>
-  );
-}
+// Plan bar colours (data viz, not interactive chrome).
+const PLAN_COLOR: Record<string, string> = { basic: '#6E8BA0', premium: '#3E7A53' };
 
 export default function OverviewPage() {
   const { push } = useToast();
@@ -33,32 +26,67 @@ export default function OverviewPage() {
   if (loading) return <Spinner />;
   if (!data) return <div className="text-inkSoft">No data.</div>;
 
+  const totalActive = data.plan_breakdown.reduce((s, p) => s + p.count, 0);
+
   return (
     <div>
-      <h1 className="mb-6 font-display text-3xl font-bold text-ink">Overview</h1>
+      <PageHd title="Dashboard" sub="Platform health at a glance." />
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Stat label="Users" value={data.users_total.toLocaleString()} hint={`${data.admins_total} admins`} />
-        <Stat label="Active subscriptions" value={data.active_subscriptions.toLocaleString()} />
-        <Stat label="Revenue (active)" value={`${data.revenue_egp.toLocaleString()} EGP`} />
-        <Stat label="Results logged" value={data.results_total.toLocaleString()} />
-        <Stat label="Lab uploads" value={data.lab_uploads_total.toLocaleString()} />
-        <Stat label="Pending review" value={data.pending_uploads.toLocaleString()} hint="uploads awaiting confirmation" />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KPICard label="Total users" value={data.users_total.toLocaleString()} hint={`${data.admins_total} admins`} />
+        <KPICard label="Active subscriptions" value={data.active_subscriptions.toLocaleString()} hint="paying customers" />
+        <KPICard label="Revenue (active)" value={`${data.revenue_egp.toLocaleString()} EGP`} hint="annual, from active plans" />
+        <KPICard label="Results logged" value={data.results_total.toLocaleString()} hint="across all users" />
       </div>
 
-      <h2 className="mb-3 mt-8 font-display text-xl font-bold text-ink">Active plans</h2>
-      <Card className="divide-y divide-line">
-        {data.plan_breakdown.length === 0 ? (
-          <div className="p-5 text-inkMuted">No active subscriptions yet.</div>
-        ) : (
-          data.plan_breakdown.map((p) => (
-            <div key={p.plan} className="flex items-center justify-between p-4">
-              <span className="font-medium capitalize text-ink">{p.plan}</span>
-              <span className="font-display text-2xl font-bold text-greenInk">{p.count}</span>
+      <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KPICard label="Lab uploads" value={data.lab_uploads_total.toLocaleString()} hint="total uploaded" />
+        <KPICard
+          label="Pending review"
+          value={data.pending_uploads.toLocaleString()}
+          hint="uploads awaiting confirmation"
+          tone={data.pending_uploads > 0 ? 'alert' : 'ink'}
+        />
+      </div>
+
+      {/* Active plans breakdown */}
+      <div className="mt-8">
+        <h2 className="mb-3 font-display text-lg font-bold text-ink">Active plans</h2>
+        <Card className="p-5">
+          {data.plan_breakdown.length === 0 ? (
+            <div className="text-sm text-inkMuted">No active subscriptions yet.</div>
+          ) : (
+            <div className="space-y-4">
+              {data.plan_breakdown.map((p) => {
+                const pct = totalActive > 0 ? Math.round((p.count / totalActive) * 100) : 0;
+                return (
+                  <div key={p.plan} className="flex items-center gap-4">
+                    <div className="flex-1">
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <span className="text-sm font-medium capitalize text-ink">{p.plan}</span>
+                        <span className="font-display text-lg font-extrabold text-ink">{p.count}</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-line">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${pct}%`, backgroundColor: PLAN_COLOR[p.plan] ?? '#6E8BA0' }}
+                        />
+                      </div>
+                    </div>
+                    <span className="w-9 text-right text-xs text-inkMuted">{pct}%</span>
+                  </div>
+                );
+              })}
             </div>
-          ))
-        )}
-      </Card>
+          )}
+        </Card>
+      </div>
+
+      <EyebrowLabel className="mt-8">Note</EyebrowLabel>
+      <p className="max-w-2xl text-xs text-inkMuted">
+        Trend deltas and signup charts require historical snapshots, which aren&apos;t collected yet —
+        the figures above are live point-in-time counts.
+      </p>
     </div>
   );
 }
