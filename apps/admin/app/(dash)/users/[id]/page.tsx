@@ -500,6 +500,20 @@ function ReviewModal({
   const setRow = (i: number, patch: Partial<ParsedLabRow>) =>
     setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
 
+  // Biomarker options for remapping a mis-matched (or manually added) row.
+  const bmOptions = useMemo(
+    () => [...biomarkers].sort((a, b) => a.name.localeCompare(b.name)),
+    [biomarkers],
+  );
+
+  // Manual override: add a marker the parser missed entirely.
+  const addRow = () =>
+    setRows((rs) => [
+      ...rs,
+      { biomarker_id: null, biomarker_name: 'Manual entry', matched_name: null, value: null, unit: null, confidence: 1, include: true },
+    ]);
+  const removeRow = (i: number) => setRows((rs) => rs.filter((_, idx) => idx !== i));
+
   const confirm = async () => {
     const payloadRows = rows
       .filter((r) => r.biomarker_id && r.value !== null)
@@ -523,42 +537,68 @@ function ReviewModal({
         <Field label="Test date"><Input type="date" value={testedAt} onChange={(e) => setTestedAt(e.target.value)} /></Field>
         <Field label="Lab name"><Input value={labName} onChange={(e) => setLabName(e.target.value)} /></Field>
       </div>
-      {upload.file_url ? (
-        <a href={upload.file_url} target="_blank" rel="noreferrer" className="mb-3 inline-block text-sm text-greenInk hover:underline">
-          View original PDF ↗
-        </a>
-      ) : null}
+      <div className="mb-2 flex items-center justify-between">
+        {upload.file_url ? (
+          <a href={upload.file_url} target="_blank" rel="noreferrer" className="text-sm text-greenInk hover:underline">
+            View original PDF ↗
+          </a>
+        ) : <span />}
+        <span className="text-xs text-inkMuted">
+          Fix a wrong match with the dropdown, edit any value, or add a marker the parser missed.
+        </span>
+      </div>
       <div className="max-h-[50vh] overflow-y-auto rounded-lg border border-line">
         <table className="w-full text-sm">
           <thead className="sticky top-0 bg-panel text-left text-xs uppercase text-inkMuted">
-            <tr><th className="px-3 py-2">Import</th><th className="px-3 py-2">Biomarker</th><th className="px-3 py-2">Value</th><th className="px-3 py-2">Unit</th><th className="px-3 py-2">Confidence</th></tr>
+            <tr><th className="px-3 py-2">Import</th><th className="px-3 py-2">Biomarker</th><th className="px-3 py-2">Value</th><th className="px-3 py-2">Unit</th><th className="px-3 py-2">Conf.</th><th className="px-3 py-2" /></tr>
           </thead>
           <tbody>
             {rows.map((r, i) => {
               const bm = r.biomarker_id ? bmById.get(r.biomarker_id) : null;
+              const lowConf = r.confidence < 0.6;
               return (
-                <tr key={i} className="border-t border-line">
+                <tr key={i} className="border-t border-line" style={lowConf ? { backgroundColor: 'rgba(205,162,78,.08)' } : undefined}>
                   <td className="px-3 py-2">
-                    <input type="checkbox" checked={r.include} onChange={(e) => setRow(i, { include: e.target.checked })} />
+                    <input type="checkbox" className="accent-accent" checked={r.include} onChange={(e) => setRow(i, { include: e.target.checked })} />
                   </td>
-                  <td className="px-3 py-2 font-medium text-ink">{bm?.name ?? r.biomarker_name}</td>
+                  <td className="px-3 py-2">
+                    <select
+                      value={r.biomarker_id ?? ''}
+                      onChange={(e) => setRow(i, { biomarker_id: e.target.value || null, include: e.target.value ? r.include : false })}
+                      className="w-52 rounded border border-line bg-canvas px-2 py-1 text-ink outline-none focus:border-accent"
+                    >
+                      <option value="">— unmatched: pick a biomarker —</option>
+                      {bmOptions.map((b) => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                    {r.biomarker_name && r.biomarker_name !== 'Manual entry' ? (
+                      <div className="mt-0.5 text-xs text-inkMuted">from PDF: {r.biomarker_name}</div>
+                    ) : null}
+                  </td>
                   <td className="px-3 py-2">
                     <input
                       type="number"
                       step="any"
                       value={r.value ?? ''}
                       onChange={(e) => setRow(i, { value: e.target.value === '' ? null : Number(e.target.value) })}
-                      className="w-24 rounded border border-line bg-canvas px-2 py-1"
+                      className="w-24 rounded border border-line bg-canvas px-2 py-1 tabular-nums"
                     />
                   </td>
-                  <td className="px-3 py-2 text-inkSoft">{r.unit ?? bm?.unit ?? ''}</td>
+                  <td className="px-3 py-2 text-inkSoft">{bm?.unit ?? r.unit ?? ''}</td>
                   <td className="px-3 py-2 text-inkMuted">{Math.round(r.confidence * 100)}%</td>
+                  <td className="px-3 py-2">
+                    <button onClick={() => removeRow(i)} className="text-inkMuted hover:text-rust" title="Remove row">✕</button>
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+      <button onClick={addRow} className="mt-2 text-sm text-greenInk hover:underline">
+        + Add a marker the parser missed
+      </button>
       <div className="mt-5 flex justify-end gap-2">
         <Button variant="ghost" onClick={onClose}>Cancel</Button>
         <Button onClick={confirm} disabled={busy}>{busy ? 'Importing…' : 'Import selected'}</Button>
