@@ -18,7 +18,6 @@ import {
   RangeBar,
   SectionHeader,
   SkeletonList,
-  StatusBadge,
 } from '@/components/ui';
 import { colors, statusColors } from '@/constants/theme';
 import { formatNumber } from '@/lib/format';
@@ -200,10 +199,11 @@ export default function BiomarkersTab() {
                   <Pressable
                     key={st}
                     onPress={() => toggleStatus(st)}
-                    className="flex-1 rounded-lg border p-3"
+                    className="flex-1 rounded-lg p-3"
                     style={{
-                      backgroundColor: colors.surface,
+                      backgroundColor: active ? `${statusColors[st]}1A` : colors.surface,
                       borderColor: active ? statusColors[st] : colors.border,
+                      borderWidth: active ? 2 : 1,
                     }}
                   >
                     <Text className="font-display" style={{ color: statusColors[st], fontSize: 26 }}>
@@ -245,6 +245,26 @@ export default function BiomarkersTab() {
                   <LucideIcon name="ArrowRight" size={14} color={colors.gold} />
                 </View>
               </Pressable>
+            ) : tested > 0 ? (
+              <View
+                className="mx-5 mt-5 flex-row items-start rounded-xl border p-4"
+                style={{ borderColor: `${colors.green}55`, backgroundColor: `${colors.green}14`, gap: 10 }}
+              >
+                <View
+                  className="items-center justify-center rounded-full"
+                  style={{ width: 20, height: 20, backgroundColor: colors.green, marginTop: 1 }}
+                >
+                  <LucideIcon name="Check" size={12} color={colors.obsidian} />
+                </View>
+                <View className="flex-1">
+                  <Text className="font-body" style={{ color: colors.greenInk, fontSize: 13, fontWeight: '600' }}>
+                    Everything looks healthy
+                  </Text>
+                  <Text className="font-body" style={{ color: colors.green, fontSize: 12, lineHeight: 18, marginTop: 2 }}>
+                    No markers out of range from your latest test.
+                  </Text>
+                </View>
+              </View>
             ) : null}
 
             {/* Search */}
@@ -363,7 +383,7 @@ export default function BiomarkersTab() {
             {/* Contributing tests / history */}
             {tests.length > 0 ? (
               <View className="mt-1 px-5">
-                <SectionHeader title="Contributing tests" />
+                <SectionHeader title="Test history" />
                 <View
                   className="mt-2 overflow-hidden rounded-lg border"
                   style={{ borderColor: colors.border, backgroundColor: colors.surface }}
@@ -402,7 +422,7 @@ export default function BiomarkersTab() {
   );
 }
 
-/** A list row: name, value, status badge, and a compact range bar. */
+/** A list row: status dot, name + compact range bar, and a status-coloured value. */
 function BiomarkerRangeRow({
   biomarker: b,
   onPress,
@@ -412,44 +432,39 @@ function BiomarkerRangeRow({
 }) {
   const value = b.latest_result?.value ?? null;
   const hasValue = value !== null && value !== undefined;
+  const color = statusColors[b.status];
   return (
     <Pressable
       onPress={onPress}
-      className="border-b py-3"
-      style={{ borderBottomColor: colors.border }}
+      className="flex-row items-center border-b py-2.5"
+      style={{ borderBottomColor: colors.border, gap: 10 }}
     >
-      <View className="flex-row items-center">
-        <Text className="flex-1 font-body" style={{ color: colors.white, fontSize: 16 }}>
+      <View
+        className="rounded-full"
+        style={{ width: 7, height: 7, backgroundColor: color, alignSelf: 'flex-start', marginTop: hasValue ? 5 : 1 }}
+      />
+      <View className="flex-1">
+        <Text className="font-body" style={{ color: colors.white, fontSize: 14 }} numberOfLines={1}>
           {b.name}
         </Text>
         {hasValue ? (
-          <Text className="font-display" style={{ color: colors.white, fontSize: 18 }}>
-            {formatNumber(value)}{' '}
-            <Text className="font-body" style={{ color: colors.textDim, fontSize: 12 }}>
-              {b.unit}
-            </Text>
-          </Text>
-        ) : null}
-        <LucideIcon name="ChevronRight" size={16} color={colors.textMuted} />
-      </View>
-      <View className="mt-2 flex-row items-center" style={{ gap: 10 }}>
-        <StatusBadge status={b.status} size="sm" />
-        {hasValue ? (
-          <View className="flex-1">
-            <RangeBar
-              range={b}
-              value={value}
-              unit={b.unit}
-              mode="optimal"
-              compact
-            />
-          </View>
+          <RangeBar range={b} value={value} unit={b.unit} mode="optimal" compact />
         ) : (
-          <Text className="font-body" style={{ color: colors.textMuted, fontSize: 12 }}>
+          <Text className="font-body" style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
             Not tested yet
           </Text>
         )}
       </View>
+      {hasValue ? (
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text className="font-display" style={{ color, fontSize: 17 }}>
+            {formatNumber(value)}
+          </Text>
+          <Text className="font-body" style={{ color: colors.textMuted, fontSize: 10 }}>
+            {b.unit}
+          </Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
