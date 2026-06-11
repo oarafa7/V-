@@ -1881,4 +1881,84 @@ export const BIOMARKER_SEED: BiomarkerSeed[] = [
     display_order: 18,
     tags: ['phosphorus', 'mineral', 'bone', 'blood', 'kidney'],
   },
+  {
+    category: 'hepatic',
+    name: 'Alkaline Phosphatase',
+    slug: 'alkaline-phosphatase',
+    unit: 'U/L',
+    description:
+      'Alkaline phosphatase (ALP) is an enzyme found mainly in the liver and bones. Blood levels rise when the bile ducts are blocked or when bone turnover is high.',
+    why_it_matters:
+      'ALP helps distinguish liver and bile-duct problems from bone conditions. Persistently high levels warrant a look at liver, gallbladder, or bone health.',
+    what_affects_it:
+      'Bile-duct obstruction, liver disease, bone growth or healing, pregnancy, and some medications raise it. Levels are naturally higher in growing children and adolescents.',
+    optimal_low: 46,
+    optimal_high: 100,
+    normal_low: 46,
+    normal_high: 116,
+    min_plausible: 10,
+    max_plausible: 1200,
+    display_order: 19,
+    tags: ['alp', 'alkaline phosphatase', 'liver', 'bone', 'hepatic'],
+  },
+  {
+    category: 'hepatic',
+    name: 'Indirect Bilirubin',
+    slug: 'indirect-bilirubin',
+    unit: 'mg/dL',
+    description:
+      'Indirect (unconjugated) bilirubin is the form of bilirubin before the liver processes it. It is calculated from total and direct bilirubin.',
+    why_it_matters:
+      'A high indirect fraction points to increased red-cell breakdown or inherited conditions like Gilbert syndrome, rather than a bile-flow problem.',
+    what_affects_it:
+      'Haemolysis, fasting, dehydration, and Gilbert syndrome raise it. It is usually harmless in isolation but is read alongside total and direct bilirubin.',
+    optimal_low: 0,
+    optimal_high: 0.7,
+    normal_low: 0,
+    normal_high: 0.9,
+    min_plausible: 0,
+    max_plausible: 20,
+    display_order: 20,
+    tags: ['indirect bilirubin', 'unconjugated', 'liver', 'haemolysis', 'hepatic'],
+  },
+  {
+    category: 'hepatic',
+    name: 'Blood Urea',
+    slug: 'blood-urea-nitrogen',
+    unit: 'mg/dL',
+    description:
+      'Urea is a waste product from protein breakdown that the kidneys filter out of the blood. It is a basic measure of kidney function and hydration.',
+    why_it_matters:
+      'High urea can signal reduced kidney function or dehydration, while low values can reflect low protein intake or liver issues. It is read alongside creatinine.',
+    what_affects_it:
+      'Hydration, dietary protein, kidney function, and some medications affect it. Dehydration and high-protein diets push it up; over-hydration lowers it.',
+    optimal_low: 15,
+    optimal_high: 40,
+    normal_low: 19,
+    normal_high: 49,
+    min_plausible: 2,
+    max_plausible: 300,
+    display_order: 21,
+    tags: ['urea', 'bun', 'kidney', 'hepatic', 'waste'],
+  },
+  {
+    category: 'hormonal',
+    name: 'PSA (Total)',
+    slug: 'psa-total',
+    unit: 'ng/mL',
+    description:
+      'Prostate-specific antigen (PSA) is a protein made by the prostate. Blood levels are used to screen for and monitor prostate conditions in men.',
+    why_it_matters:
+      'A rising or elevated PSA can be an early sign of prostate enlargement, inflammation, or cancer, prompting further evaluation.',
+    what_affects_it:
+      'Age, prostate size, recent ejaculation, cycling, infection, and some procedures can raise it. It is interpreted in the context of age and trend over time.',
+    optimal_low: 0,
+    optimal_high: 2.5,
+    normal_low: 0,
+    normal_high: 4,
+    min_plausible: 0,
+    max_plausible: 100,
+    display_order: 19,
+    tags: ['psa', 'prostate', 'hormonal', 'screening', 'men'],
+  },
 ];

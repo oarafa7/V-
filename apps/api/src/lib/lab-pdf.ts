@@ -46,15 +46,29 @@ const SLUG_ALIASES: Record<string, string[]> = {
   ast: ['ast', 'sgot', 'aspartate aminotransferase'],
   'uric-acid': ['uric acid'],
   'hscrp-cardiac': ['hs-crp', 'hscrp', 'high sensitivity crp'],
+  'alkaline-phosphatase': ['alkaline phosphatase', 'alp', 'alk phos'],
+  'blood-urea-nitrogen': ['blood urea nitrogen', 'bun', 'urea', 'serum urea'],
+  'psa-total': ['psa', 'psa total', 'prostate specific antigen', 'total psa'],
+  'indirect-bilirubin': ['indirect bilirubin', 'unconjugated bilirubin'],
+  'total-bilirubin': ['total bilirubin'],
+  'direct-bilirubin': ['direct bilirubin', 'conjugated bilirubin'],
+  'total-protein': ['total protein', 'serum total protein'],
+  albumin: ['albumin', 'serum albumin'],
 };
 
 function normalize(s: string): string {
   return s.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-/** First number on a line, tolerant of commas and surrounding text. */
+/**
+ * First standalone number on a line. Requires the number not be embedded in an
+ * alphanumeric token, so marker names like "A1C", "B12", "T3" don't yield a
+ * bogus value (the "1" in "A1C").
+ */
 function extractNumber(line: string): number | null {
-  const m = line.match(/(-?\d{1,3}(?:,\d{3})*(?:\.\d+)?|-?\d+(?:\.\d+)?)/);
+  const m = line.match(
+    /(?:^|[^A-Za-z0-9.])(-?\d{1,3}(?:,\d{3})*(?:\.\d+)?|-?\d+(?:\.\d+)?)(?=[^A-Za-z0-9]|$)/,
+  );
   if (!m) return null;
   const n = Number(m[1]!.replace(/,/g, ''));
   return Number.isFinite(n) ? n : null;
