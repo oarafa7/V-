@@ -164,12 +164,17 @@ export default function BookTest() {
                         disabled={full || booking}
                         onPress={() => book(selectedDay.date, s.start_time, s.end_time)}
                         className="mb-2 flex-row items-center justify-between rounded-lg border p-4"
-                        style={{ backgroundColor: colors.surface, borderColor: full ? colors.border : colors.gold, opacity: full ? 0.5 : 1 }}
+                        style={{ backgroundColor: full ? colors.surface : colors.deep, borderColor: full ? colors.border : colors.gold, opacity: full ? 0.55 : 1, minHeight: 56 }}
                       >
                         <Text className="font-display" style={{ color: colors.white, fontSize: 16 }}>{s.start_time} – {s.end_time}</Text>
-                        <Text className="font-body" style={{ color: full ? colors.red : colors.green, fontSize: 13 }}>
-                          {full ? 'Full' : `${s.remaining} left`}
-                        </Text>
+                        <View
+                          className="rounded-full px-2.5 py-1"
+                          style={{ backgroundColor: full ? `${colors.red}18` : `${colors.green}18` }}
+                        >
+                          <Text className="font-body" style={{ color: full ? colors.red : colors.greenInk, fontSize: 12, fontWeight: '500' }}>
+                            {full ? 'Full' : `${s.remaining} left`}
+                          </Text>
+                        </View>
                       </Pressable>
                     );
                   })

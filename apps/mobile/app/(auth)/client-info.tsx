@@ -76,13 +76,19 @@ export default function ClientInfo() {
               key={a.value}
               onPress={() => setActivity(a.value)}
               className="mb-2 flex-row items-center justify-between rounded-lg border p-3"
-              style={{ backgroundColor: sel ? `${colors.gold}1A` : colors.surface, borderColor: sel ? colors.gold : colors.border }}
+              style={{ backgroundColor: sel ? `${colors.gold}1F` : colors.surface, borderColor: sel ? colors.gold : colors.border, minHeight: 52 }}
             >
               <View>
-                <Text className="font-body" style={{ color: colors.white, fontSize: 15 }}>{a.label}</Text>
+                <Text className="font-body" style={{ color: colors.white, fontSize: 15, fontWeight: sel ? '600' : '400' }}>{a.label}</Text>
                 <Text className="font-body" style={{ color: colors.textDim, fontSize: 12 }}>{a.hint}</Text>
               </View>
-              {sel ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.gold }} /> : null}
+              {/* Always-visible radio */}
+              <View
+                className="items-center justify-center rounded-full"
+                style={{ width: 20, height: 20, borderWidth: 2, borderColor: sel ? colors.gold : colors.border, backgroundColor: sel ? colors.gold : 'transparent' }}
+              >
+                {sel ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.obsidian }} /> : null}
+              </View>
             </Pressable>
           );
         })}
