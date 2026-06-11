@@ -5,11 +5,13 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "scheme": "vital",
-    "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#090B0E"
+      "backgroundColor": "#FBF6EC"
     },
     "ios": {
       "supportsTablet": true,
@@ -18,7 +20,8 @@
     "android": {
       "package": "app.vital.mobile",
       "adaptiveIcon": {
-        "backgroundColor": "#090B0E"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FBF6EC"
       }
     },
     "web": {
