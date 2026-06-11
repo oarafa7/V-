@@ -60,6 +60,11 @@ function extractNumber(line: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** A line that is just a number — the value in "name / value / unit" layouts. */
+function pureNumberLine(line: string): number | null {
+  return /^[-+]?\d+(?:\.\d+)?$/.test(line.trim()) ? Number(line.trim()) : null;
+}
+
 interface Candidate {
   bm: BiomarkerLike;
   needles: string[];
@@ -98,12 +103,27 @@ export async function parseLabPdf(
   // Best match per biomarker (one row each, highest confidence wins).
   const best = new Map<string, ParsedLabRow>();
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
     const nline = normalize(line);
-    const value = extractNumber(line);
+
+    // Value: on this line, or — for "name / value / unit" layouts — the next
+    // line if it is a standalone number.
+    let value = extractNumber(line);
+    if (value === null) {
+      const next = i + 1 < lines.length ? pureNumberLine(lines[i + 1]!) : null;
+      value = next;
+    }
     if (value === null) continue;
 
+    // Among all biomarkers whose needle matches this line, keep the single most
+    // specific one (full-name match first, then longest needle) so one value is
+    // never assigned to several markers.
+    let pick: { cand: Candidate; needle: string; full: boolean } | null = null;
     for (const cand of candidates) {
+      // Negative context: don't let generic haemoglobin match an "A1c" line.
+      if (cand.bm.slug === 'hemoglobin' && /\ba1c\b/.test(nline)) continue;
+
       let matchedNeedle: string | null = null;
       for (const needle of cand.needles) {
         if (needle.length < 2) continue;
@@ -118,24 +138,32 @@ export async function parseLabPdf(
       }
       if (!matchedNeedle) continue;
 
-      const inRange = value >= cand.bm.minPlausible && value <= cand.bm.maxPlausible;
-      const isFullName = matchedNeedle === normalize(cand.bm.name);
-      let confidence = isFullName ? 0.85 : 0.6;
-      if (inRange) confidence += 0.1;
-      confidence = Math.min(confidence, 0.97);
+      const full = matchedNeedle === normalize(cand.bm.name);
+      const better =
+        !pick ||
+        (full && !pick.full) ||
+        (full === pick.full && matchedNeedle.length > pick.needle.length);
+      if (better) pick = { cand, needle: matchedNeedle, full };
+    }
+    if (!pick) continue;
 
-      const existing = best.get(cand.bm.id);
-      if (!existing || confidence > existing.confidence) {
-        best.set(cand.bm.id, {
-          biomarkerId: cand.bm.id,
-          biomarkerName: cand.bm.name,
-          matchedName: cand.bm.name,
-          value,
-          unit: cand.bm.unit,
-          confidence,
-          include: confidence >= 0.6 && inRange,
-        });
-      }
+    const { cand, full } = pick;
+    const inRange = value >= cand.bm.minPlausible && value <= cand.bm.maxPlausible;
+    let confidence = full ? 0.85 : 0.6;
+    if (inRange) confidence += 0.1;
+    confidence = Math.min(confidence, 0.97);
+
+    const existing = best.get(cand.bm.id);
+    if (!existing || confidence > existing.confidence) {
+      best.set(cand.bm.id, {
+        biomarkerId: cand.bm.id,
+        biomarkerName: cand.bm.name,
+        matchedName: cand.bm.name,
+        value,
+        unit: cand.bm.unit,
+        confidence,
+        include: confidence >= 0.6 && inRange,
+      });
     }
   }
 
