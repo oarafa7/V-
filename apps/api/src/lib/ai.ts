@@ -141,6 +141,11 @@ function systemPrompt(config: AiConfig, context: string): string {
     config.persona,
     '',
     'Rules:',
+    "- Stay strictly on scope: only discuss the user's lab results and biomarkers, and " +
+      'general health, nutrition, fitness, sleep, supplements, stress, and lifestyle/wellness. ' +
+      'If asked anything outside this (e.g. coding, news, general trivia, or unrelated topics), ' +
+      'politely decline in one short sentence and steer back to their health and labs — do not ' +
+      'answer the off-topic request.',
     '- Ground every statement in the user data provided. Do not invent values.',
     '- Explain what each finding means and what is modifiable through lifestyle.',
     '- Never diagnose disease, name medications, or give dosages.',
