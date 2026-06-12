@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CategoryCard, EmptyState, LucideIcon, ScoreHero, SectionHeader } from '@/components/ui';
+import { CategoryCard, EmptyState, LucideIcon, SectionHeader } from '@/components/ui';
 import { colors, statusColors } from '@/constants/theme';
 import { aiApi, notificationApi } from '@/lib/api';
 import { summariseByCategory } from '@/lib/library-select';
@@ -24,8 +24,6 @@ export default function Dashboard() {
   const subscription = useSubscriptionStore((s) => s.subscription);
   const subLoaded = useSubscriptionStore((s) => s.loaded);
   const { biomarkers, categories, fetch } = useLibraryStore();
-  const score = useScoreStore((s) => s.score);
-  const history = useScoreStore((s) => s.history);
   const fetchScore = useScoreStore((s) => s.fetch);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -95,16 +93,9 @@ export default function Dashboard() {
           </View>
         ) : (
           <>
-            {/* VITAL Score hero */}
-            {score ? (
-              <View className="mt-6 px-5">
-                <ScoreHero score={score} history={history} />
-              </View>
-            ) : null}
-
             {/* Count-bar hero — status breakdown (tap → Labs Summary) */}
             {tested > 0 ? (
-              <Pressable className="mt-4 px-5" onPress={() => router.push('/(tabs)/biomarkers')}>
+              <Pressable className="mt-6 px-5" onPress={() => router.push('/(tabs)/biomarkers')}>
                 <View
                   className="rounded-2xl border p-4"
                   style={{ backgroundColor: colors.surface, borderColor: colors.border }}
@@ -159,6 +150,12 @@ export default function Dashboard() {
 
             {/* AI + Recommendations entries */}
             <View className="mt-4 px-5" style={{ gap: 10 }}>
+              <DashCard
+                icon="Activity"
+                title="VITAL Score"
+                subtitle="Your overall health score & trend"
+                onPress={() => router.push('/score')}
+              />
               {aiEnabled ? (
                 <DashCard
                   icon="Sparkles"
