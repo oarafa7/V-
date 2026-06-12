@@ -71,6 +71,13 @@
       "when": 1780987358614,
       "tag": "0009_lab_partner_areas",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1781281185369,
+      "tag": "0010_ai_chat_summaries",
+      "breakpoints": true
     }
   ]
 }

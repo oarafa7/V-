@@ -279,6 +279,20 @@ export const aiChatMessages = pgTable('ai_chat_messages', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Rolling summary of a user's older chat messages, so long conversations keep
+ *  context beyond the recent-message window. `coveredCount` = how many messages
+ *  (oldest-first) have been folded into the summary. */
+export const aiChatSummaries = pgTable('ai_chat_summaries', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  summary: text('summary').notNull().default(''),
+  coveredCount: integer('covered_count').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // interventions (Phase 2 — admin-managed supplement / protocol catalog)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -517,6 +531,7 @@ export type ScoreSnapshotRow = typeof scoreSnapshots.$inferSelect;
 export type NewScoreSnapshotRow = typeof scoreSnapshots.$inferInsert;
 export type AiInsightRow = typeof aiInsights.$inferSelect;
 export type AiChatMessageRow = typeof aiChatMessages.$inferSelect;
+export type AiChatSummaryRow = typeof aiChatSummaries.$inferSelect;
 export type InterventionRow = typeof interventions.$inferSelect;
 export type NotificationRow = typeof notifications.$inferSelect;
 export type DeviceTokenRow = typeof deviceTokens.$inferSelect;

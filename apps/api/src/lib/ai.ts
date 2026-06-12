@@ -12,11 +12,12 @@
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { type AiConfig, classifyBiomarkerSafe } from '@vital/shared';
-import { desc, eq } from 'drizzle-orm';
+import { asc, desc, eq, sql } from 'drizzle-orm';
 
 import { db } from '../db/client.js';
 import {
   aiChatMessages,
+  aiChatSummaries,
   aiInsights,
   biomarkers,
   scoreSnapshots,
@@ -253,23 +254,101 @@ export async function generateAndStoreInsights(
 }
 
 /** Grounded chat reply. Persists both the user message and the assistant reply. */
+// Recent messages kept verbatim; older ones are folded into the rolling summary
+// once the verbatim window grows past MAX_VERBATIM (folding back down to KEEP).
+const KEEP_RECENT = 10;
+const MAX_VERBATIM = 20;
+
+/** Condense older messages into/onto the existing summary. */
+async function summariseConversation(
+  existing: string,
+  msgs: { role: string; content: string }[],
+  config: AiConfig,
+): Promise<string> {
+  const transcript = msgs.map((m) => `${m.role}: ${m.content}`).join('\n');
+  const prompt =
+    'Update the running summary of this health-coaching conversation. Keep it under 180 words. ' +
+    "Preserve the user's goals, concerns, lifestyle details, preferences, and any guidance already " +
+    'given, so future replies stay consistent. Return only the updated summary.\n\n' +
+    `EXISTING SUMMARY:\n${existing || '(none yet)'}\n\nNEW MESSAGES TO FOLD IN:\n${transcript}`;
+  try {
+    const m = await anthropic().messages.create({
+      model: config.model,
+      max_tokens: 400,
+      system: 'You write concise, faithful running summaries of a wellness conversation.',
+      messages: [{ role: 'user', content: prompt }],
+    });
+    return textOf(m) || existing;
+  } catch {
+    return existing; // never block a reply on summarisation
+  }
+}
+
+/** Ensure the rolling summary covers all-but-recent messages; returns it. */
+async function rollingSummary(
+  userId: string,
+  config: AiConfig,
+): Promise<{ text: string; coveredCount: number }> {
+  const [row] = await db
+    .select({ summary: aiChatSummaries.summary, coveredCount: aiChatSummaries.coveredCount })
+    .from(aiChatSummaries)
+    .where(eq(aiChatSummaries.userId, userId))
+    .limit(1);
+  let text = row?.summary ?? '';
+  let covered = row?.coveredCount ?? 0;
+
+  const [{ total } = { total: 0 }] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(aiChatMessages)
+    .where(eq(aiChatMessages.userId, userId));
+
+  if (total - covered > MAX_VERBATIM) {
+    const foldCount = total - covered - KEEP_RECENT;
+    const older = await db
+      .select({ role: aiChatMessages.role, content: aiChatMessages.content })
+      .from(aiChatMessages)
+      .where(eq(aiChatMessages.userId, userId))
+      .orderBy(asc(aiChatMessages.createdAt))
+      .offset(covered)
+      .limit(foldCount);
+    text = await summariseConversation(text, older, config);
+    covered += foldCount;
+    await db
+      .insert(aiChatSummaries)
+      .values({ userId, summary: text, coveredCount: covered })
+      .onConflictDoUpdate({
+        target: aiChatSummaries.userId,
+        set: { summary: text, coveredCount: covered, updatedAt: new Date() },
+      });
+  }
+  return { text, coveredCount: covered };
+}
+
 export async function chatReply(userId: string, userMessage: string, config: AiConfig): Promise<string> {
   if (!config.enabled || !config.features.chat) {
     fail('unprocessable', 'AI chat is disabled.');
   }
   const context = await buildUserContext(userId);
 
-  // Last 10 messages for short-term continuity (oldest → newest).
-  const history = await db
+  // Rolling memory: messages older than the recent window are folded into a
+  // per-user summary so long conversations keep full context.
+  const summary = await rollingSummary(userId, config);
+
+  // Recent messages kept verbatim (everything not yet folded into the summary).
+  const recent = await db
     .select({ role: aiChatMessages.role, content: aiChatMessages.content })
     .from(aiChatMessages)
     .where(eq(aiChatMessages.userId, userId))
-    .orderBy(desc(aiChatMessages.createdAt))
-    .limit(10);
-  const ordered = history.reverse();
+    .orderBy(asc(aiChatMessages.createdAt))
+    .offset(summary.coveredCount)
+    .limit(MAX_VERBATIM);
+
+  const fullContext = summary.text
+    ? `${context}\n\nEARLIER CONVERSATION SUMMARY:\n${summary.text}`
+    : context;
 
   const messages: Anthropic.MessageParam[] = [
-    ...ordered.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+    ...recent.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     { role: 'user' as const, content: userMessage },
   ];
 
@@ -277,7 +356,7 @@ export async function chatReply(userId: string, userMessage: string, config: AiC
     model: config.model,
     max_tokens: config.max_tokens,
     thinking: { type: 'adaptive' },
-    system: systemPrompt(config, context),
+    system: systemPrompt(config, fullContext),
     messages,
   });
   const reply = textOf(message) || 'I could not generate a response. Please try again.';
