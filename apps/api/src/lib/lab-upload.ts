@@ -92,10 +92,16 @@ export async function confirmUpload(
   const included = rows.filter((r) => r.include);
   if (included.length === 0) fail('unprocessable', 'No rows selected to import');
 
+  // Dedupe by biomarker (last selected row wins) so a manually-added/remapped row
+  // can't import a second result for a marker the parser already produced.
+  const byBiomarker = new Map<string, (typeof included)[number]>();
+  for (const r of included) byBiomarker.set(r.biomarker_id, r);
+  const finalRows = [...byBiomarker.values()];
+
   const inserted = await db
     .insert(userBiomarkerResults)
     .values(
-      included.map((r) => ({
+      finalRows.map((r) => ({
         userId: upload.userId,
         biomarkerId: r.biomarker_id,
         value: String(r.value),

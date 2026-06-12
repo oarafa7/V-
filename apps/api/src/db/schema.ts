@@ -6,6 +6,7 @@
  */
 import { relations } from 'drizzle-orm';
 import {
+  bigserial,
   boolean,
   date,
   decimal,
@@ -269,6 +270,9 @@ export const aiInsights = pgTable('ai_insights', {
 
 export const aiChatMessages = pgTable('ai_chat_messages', {
   id: uuid('id').primaryKey().defaultRandom(),
+  // Monotonic insertion order — deterministic tiebreaker for messages that share
+  // a created_at (user + assistant are inserted in one statement → same now()).
+  seq: bigserial('seq', { mode: 'number' }).notNull(),
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),

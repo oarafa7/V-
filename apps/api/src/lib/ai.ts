@@ -97,8 +97,11 @@ export async function buildUserContext(userId: string): Promise<string> {
   }
 
   if (byMarker.size) {
-    lines.push('', 'Latest biomarker values (with change since the previous test):');
-    for (const arr of byMarker.values()) {
+    // Prioritise out-of-range markers and cap the list so the prompt stays bounded
+    // on users with a large panel.
+    const RANK: Record<string, number> = { alert: 0, suboptimal: 1, optimal: 2, untested: 3 };
+    const CAP = 30;
+    const entries = [...byMarker.values()].map((arr) => {
       const latest = arr[0]!;
       const prev = arr[1];
       const status = classifyBiomarkerSafe(n(latest.value), {
@@ -107,13 +110,22 @@ export async function buildUserContext(userId: string): Promise<string> {
         normal_low: n(latest.normalLow),
         normal_high: n(latest.normalHigh),
       });
-      let line = `  - ${latest.name}: ${n(latest.value)} ${latest.unit} (${status}, tested ${latest.testedAt})`;
-      if (prev) {
-        const d = n(latest.value) - n(prev.value);
+      return { latest, prev, status };
+    });
+    entries.sort((a, b) => (RANK[a.status] ?? 9) - (RANK[b.status] ?? 9));
+
+    lines.push('', 'Latest biomarker values (out-of-range first; change since the previous test):');
+    for (const e of entries.slice(0, CAP)) {
+      let line = `  - ${e.latest.name}: ${n(e.latest.value)} ${e.latest.unit} (${e.status}, tested ${e.latest.testedAt})`;
+      if (e.prev) {
+        const d = n(e.latest.value) - n(e.prev.value);
         const arrow = d > 0 ? '↑' : d < 0 ? '↓' : '→';
-        line += `; previously ${n(prev.value)} on ${prev.testedAt} (${arrow}${Math.abs(Math.round(d * 100) / 100)})`;
+        line += `; previously ${n(e.prev.value)} on ${e.prev.testedAt} (${arrow}${Math.abs(Math.round(d * 100) / 100)})`;
       }
       lines.push(line);
+    }
+    if (entries.length > CAP) {
+      lines.push(`  …and ${entries.length - CAP} more in-range markers (ask about any specific one).`);
     }
   }
 
@@ -313,7 +325,7 @@ async function rollingSummary(
       .select({ role: aiChatMessages.role, content: aiChatMessages.content })
       .from(aiChatMessages)
       .where(eq(aiChatMessages.userId, userId))
-      .orderBy(asc(aiChatMessages.createdAt))
+      .orderBy(asc(aiChatMessages.seq))
       .offset(covered)
       .limit(foldCount);
     text = await summariseConversation(text, older, config);
@@ -344,7 +356,7 @@ export async function chatReply(userId: string, userMessage: string, config: AiC
     .select({ role: aiChatMessages.role, content: aiChatMessages.content })
     .from(aiChatMessages)
     .where(eq(aiChatMessages.userId, userId))
-    .orderBy(asc(aiChatMessages.createdAt))
+    .orderBy(asc(aiChatMessages.seq))
     .offset(summary.coveredCount)
     .limit(MAX_VERBATIM);
 

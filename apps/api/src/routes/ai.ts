@@ -52,7 +52,7 @@ aiRoutes.get('/ai/chat/me', async (c) => {
     .select()
     .from(aiChatMessages)
     .where(eq(aiChatMessages.userId, userId))
-    .orderBy(asc(aiChatMessages.createdAt))
+    .orderBy(asc(aiChatMessages.seq))
     .limit(100);
   return c.json({ messages: rows.map(serializeAiChatMessage) });
 });
