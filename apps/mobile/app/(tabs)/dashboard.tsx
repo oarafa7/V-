@@ -8,7 +8,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CategoryCard, EmptyState, LucideIcon, ScoreHero, SectionHeader } from '@/components/ui';
-import { colors } from '@/constants/theme';
+import { colors, statusColors } from '@/constants/theme';
 import { aiApi, notificationApi } from '@/lib/api';
 import { summariseByCategory } from '@/lib/library-select';
 import { useAuthStore } from '@/lib/store/auth';
@@ -43,6 +43,15 @@ export default function Dashboard() {
   }, []);
 
   const summaries = useMemo(() => summariseByCategory(biomarkers), [biomarkers]);
+
+  // Status breakdown for the count-bar hero (a count of statuses — not a score).
+  const counts = useMemo(() => {
+    const c = { optimal: 0, suboptimal: 0, alert: 0, untested: 0 };
+    for (const b of biomarkers) c[b.status] += 1;
+    return c;
+  }, [biomarkers]);
+  const tested = counts.optimal + counts.suboptimal + counts.alert;
+  const maxCount = Math.max(counts.optimal, counts.suboptimal, counts.alert, 1);
 
   const firstName = user?.full_name?.split(' ')[0] ?? 'there';
 
@@ -91,6 +100,61 @@ export default function Dashboard() {
               <View className="mt-6 px-5">
                 <ScoreHero score={score} history={history} />
               </View>
+            ) : null}
+
+            {/* Count-bar hero — status breakdown (tap → Labs Summary) */}
+            {tested > 0 ? (
+              <Pressable className="mt-4 px-5" onPress={() => router.push('/(tabs)/biomarkers')}>
+                <View
+                  className="rounded-2xl border p-4"
+                  style={{ backgroundColor: colors.surface, borderColor: colors.border }}
+                >
+                  <View className="mb-1 flex-row items-center justify-between">
+                    <Text
+                      className="font-mono uppercase tracking-widest"
+                      style={{ color: colors.gold, fontSize: 11 }}
+                    >
+                      Biomarkers
+                    </Text>
+                    <LucideIcon name="ChevronRight" size={16} color={colors.textDim} />
+                  </View>
+                  <View className="flex-row items-end justify-between" style={{ height: 140 }}>
+                    {[
+                      { label: 'Optimal', n: counts.optimal, c: statusColors.optimal },
+                      { label: 'Review', n: counts.suboptimal, c: statusColors.suboptimal },
+                      { label: 'Out of Range', n: counts.alert, c: statusColors.alert },
+                    ].map((b) => (
+                      <View
+                        key={b.label}
+                        className="flex-1 items-center justify-end"
+                        style={{ height: '100%' }}
+                      >
+                        <Text className="font-display" style={{ color: b.c, fontSize: 30 }}>
+                          {b.n}
+                        </Text>
+                        <Text
+                          className="font-body"
+                          style={{ color: colors.textDim, fontSize: 12, marginTop: 2, marginBottom: 8 }}
+                        >
+                          {b.label}
+                        </Text>
+                        <View
+                          style={{
+                            width: '64%',
+                            borderRadius: 8,
+                            backgroundColor: b.c,
+                            height: Math.max(8, (b.n / maxCount) * 84),
+                          }}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                  <Text className="mt-3 font-body" style={{ color: colors.textDim, fontSize: 14 }}>
+                    <Text style={{ color: colors.white, fontWeight: '700' }}>{counts.optimal}</Text> of{' '}
+                    {tested} markers optimal
+                  </Text>
+                </View>
+              </Pressable>
             ) : null}
 
             {/* AI + Recommendations entries */}
