@@ -4,7 +4,7 @@
  * disclaimer is always shown.
  */
 import type { AiChatMessage, AiInsight, AiStatus } from '@vital/shared';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -25,6 +25,9 @@ import { ApiError, aiApi } from '@/lib/api';
 export default function Insights() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  // Optional seed prompt (e.g. tapped "Explore your labs in detail" on Labs Summary).
+  const { ask } = useLocalSearchParams<{ ask?: string }>();
+  const askedRef = useRef(false);
   const [status, setStatus] = useState<AiStatus | null>(null);
   const [insights, setInsights] = useState<AiInsight[]>([]);
   const [messages, setMessages] = useState<AiChatMessage[]>([]);
@@ -57,8 +60,8 @@ export default function Insights() {
     })();
   }, []);
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (override?: string) => {
+    const text = (override ?? input).trim();
     if (!text || sending) return;
     setInput('');
     setSending(true);
@@ -83,6 +86,15 @@ export default function Insights() {
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
     }
   };
+
+  // Auto-send the seed prompt once, after load, when chat is enabled.
+  useEffect(() => {
+    if (askedRef.current || loading || !ask) return;
+    if (!status?.enabled || !status.features.chat) return;
+    askedRef.current = true;
+    void send(ask);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, status, ask]);
 
   const generate = async () => {
     setGenerating(true);
@@ -203,10 +215,10 @@ export default function Insights() {
             placeholder="Ask a question…"
             placeholderTextColor={colors.textMuted}
             style={{ flex: 1, color: colors.white, fontSize: 14, paddingVertical: 8 }}
-            onSubmitEditing={send}
+            onSubmitEditing={() => send()}
             returnKeyType="send"
           />
-          <Pressable onPress={send} disabled={sending || !input.trim()} style={{ opacity: sending || !input.trim() ? 0.4 : 1 }}>
+          <Pressable onPress={() => send()} disabled={sending || !input.trim()} style={{ opacity: sending || !input.trim() ? 0.4 : 1 }}>
             <LucideIcon name="SendHorizontal" size={22} color={colors.gold} />
           </Pressable>
         </View>

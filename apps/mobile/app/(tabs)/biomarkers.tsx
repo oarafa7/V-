@@ -223,10 +223,17 @@ export default function BiomarkersTab() {
               })}
             </View>
 
-            {/* Insight callout */}
+            {/* Insight callout — always tappable; opens the AI chat seeded with
+                a relevant question grounded in the user's labs. */}
             {insight ? (
               <Pressable
-                onPress={() => router.push(`/biomarker/category/${insight.cat.slug}`)}
+                onPress={() =>
+                  router.push(
+                    `/insights?ask=${encodeURIComponent(
+                      `My ${insight.cat.name} panel has ${insight.n} ${insight.n === 1 ? 'marker' : 'markers'} out of range. Explain what they mean, why they matter, and what could help — based on my latest labs.`,
+                    )}`,
+                  )
+                }
                 className="mx-5 mt-5 rounded-xl border p-4"
                 style={{ borderColor: colors.gold, backgroundColor: `${colors.gold}0D` }}
               >
@@ -236,35 +243,47 @@ export default function BiomarkersTab() {
                   right now.
                 </Text>
                 <View className="mt-2 flex-row items-center" style={{ gap: 6 }}>
-                  <Text
-                    className="font-mono uppercase tracking-widest"
-                    style={{ color: colors.gold, fontSize: 11 }}
-                  >
+                  <Text className="font-mono uppercase tracking-widest" style={{ color: colors.gold, fontSize: 11 }}>
                     Explore your labs in detail
                   </Text>
                   <LucideIcon name="ArrowRight" size={14} color={colors.gold} />
                 </View>
               </Pressable>
             ) : tested > 0 ? (
-              <View
-                className="mx-5 mt-5 flex-row items-start rounded-xl border p-4"
-                style={{ borderColor: `${colors.green}55`, backgroundColor: `${colors.green}14`, gap: 10 }}
+              <Pressable
+                onPress={() =>
+                  router.push(
+                    `/insights?ask=${encodeURIComponent(
+                      'Give me insights about my latest lab results — what stands out, what I am doing well, and how to keep improving.',
+                    )}`,
+                  )
+                }
+                className="mx-5 mt-5 rounded-xl border p-4"
+                style={{ borderColor: `${colors.green}55`, backgroundColor: `${colors.green}14` }}
               >
-                <View
-                  className="items-center justify-center rounded-full"
-                  style={{ width: 20, height: 20, backgroundColor: colors.green, marginTop: 1 }}
-                >
-                  <LucideIcon name="Check" size={12} color={colors.obsidian} />
+                <View className="flex-row items-start" style={{ gap: 10 }}>
+                  <View
+                    className="items-center justify-center rounded-full"
+                    style={{ width: 20, height: 20, backgroundColor: colors.green, marginTop: 1 }}
+                  >
+                    <LucideIcon name="Check" size={12} color={colors.obsidian} />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="font-body" style={{ color: colors.greenInk, fontSize: 13, fontWeight: '600' }}>
+                      Everything looks healthy
+                    </Text>
+                    <Text className="font-body" style={{ color: colors.green, fontSize: 12, lineHeight: 18, marginTop: 2 }}>
+                      No markers out of range from your latest test.
+                    </Text>
+                  </View>
                 </View>
-                <View className="flex-1">
-                  <Text className="font-body" style={{ color: colors.greenInk, fontSize: 13, fontWeight: '600' }}>
-                    Everything looks healthy
+                <View className="mt-2 flex-row items-center" style={{ gap: 6 }}>
+                  <Text className="font-mono uppercase tracking-widest" style={{ color: colors.greenInk, fontSize: 11 }}>
+                    Explore your labs in detail
                   </Text>
-                  <Text className="font-body" style={{ color: colors.green, fontSize: 12, lineHeight: 18, marginTop: 2 }}>
-                    No markers out of range from your latest test.
-                  </Text>
+                  <LucideIcon name="ArrowRight" size={14} color={colors.greenInk} />
                 </View>
-              </View>
+              </Pressable>
             ) : null}
 
             {/* Search */}

@@ -11,14 +11,22 @@
  * the feature degrades gracefully when unconfigured.
  */
 import Anthropic from '@anthropic-ai/sdk';
-import { type AiConfig } from '@vital/shared';
+import { type AiConfig, classifyBiomarkerSafe } from '@vital/shared';
 import { desc, eq } from 'drizzle-orm';
 
 import { db } from '../db/client.js';
-import { aiChatMessages, aiInsights } from '../db/schema.js';
+import {
+  aiChatMessages,
+  aiInsights,
+  biomarkers,
+  scoreSnapshots,
+  userBiomarkerResults,
+} from '../db/schema.js';
 import { env } from './env.js';
 import { fail } from './http.js';
 import { computeUserScore } from './score.js';
+
+const n = (v: string | number) => (typeof v === 'number' ? v : Number(v));
 
 let client: Anthropic | null = null;
 function anthropic(): Anthropic {
@@ -61,6 +69,69 @@ export async function buildUserContext(userId: string): Promise<string> {
     lines.push('Strong markers:');
     for (const d of score.drivers.positive) lines.push(`  - ${d.name} (${d.category}): ${d.score}/100`);
   }
+
+  // ── Exact latest values + change since the previous test (longitudinal memory).
+  const results = await db
+    .select({
+      biomarkerId: userBiomarkerResults.biomarkerId,
+      value: userBiomarkerResults.value,
+      testedAt: userBiomarkerResults.testedAt,
+      name: biomarkers.name,
+      unit: biomarkers.unit,
+      optimalLow: biomarkers.optimalLow,
+      optimalHigh: biomarkers.optimalHigh,
+      normalLow: biomarkers.normalLow,
+      normalHigh: biomarkers.normalHigh,
+    })
+    .from(userBiomarkerResults)
+    .innerJoin(biomarkers, eq(userBiomarkerResults.biomarkerId, biomarkers.id))
+    .where(eq(userBiomarkerResults.userId, userId))
+    .orderBy(desc(userBiomarkerResults.testedAt), desc(userBiomarkerResults.createdAt));
+
+  const byMarker = new Map<string, typeof results>();
+  for (const r of results) {
+    const arr = byMarker.get(r.biomarkerId);
+    if (arr) arr.push(r);
+    else byMarker.set(r.biomarkerId, [r]);
+  }
+
+  if (byMarker.size) {
+    lines.push('', 'Latest biomarker values (with change since the previous test):');
+    for (const arr of byMarker.values()) {
+      const latest = arr[0]!;
+      const prev = arr[1];
+      const status = classifyBiomarkerSafe(n(latest.value), {
+        optimal_low: n(latest.optimalLow),
+        optimal_high: n(latest.optimalHigh),
+        normal_low: n(latest.normalLow),
+        normal_high: n(latest.normalHigh),
+      });
+      let line = `  - ${latest.name}: ${n(latest.value)} ${latest.unit} (${status}, tested ${latest.testedAt})`;
+      if (prev) {
+        const d = n(latest.value) - n(prev.value);
+        const arrow = d > 0 ? '↑' : d < 0 ? '↓' : '→';
+        line += `; previously ${n(prev.value)} on ${prev.testedAt} (${arrow}${Math.abs(Math.round(d * 100) / 100)})`;
+      }
+      lines.push(line);
+    }
+  }
+
+  // ── VITAL Score trend across recent tests.
+  const snaps = await db
+    .select({ score: scoreSnapshots.score, recordedOn: scoreSnapshots.recordedOn })
+    .from(scoreSnapshots)
+    .where(eq(scoreSnapshots.userId, userId))
+    .orderBy(desc(scoreSnapshots.recordedOn))
+    .limit(5);
+  if (snaps.length > 1) {
+    const trend = snaps
+      .slice()
+      .reverse()
+      .map((s) => `${s.score} (${s.recordedOn})`)
+      .join(' → ');
+    lines.push('', `VITAL Score history: ${trend}.`);
+  }
+
   return lines.join('\n');
 }
 
