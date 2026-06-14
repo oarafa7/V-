@@ -35,6 +35,10 @@ class ApiClient {
   final Dio _dio;
   final TokenStore _tokens;
 
+  /// Raw dio (with the auth interceptor) for feature modules to call endpoints
+  /// not yet wrapped by a typed method.
+  Dio get dio => _dio;
+
   ApiClient(this._tokens)
       : _dio = Dio(BaseOptions(baseUrl: apiBaseUrl, contentType: 'application/json')) {
     _dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) async {
