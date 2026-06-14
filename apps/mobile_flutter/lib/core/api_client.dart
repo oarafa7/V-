@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../models/biomarker.dart';
 import '../models/notification.dart';
+import '../models/recommendation.dart';
 import '../models/score.dart';
 import '../models/user.dart';
 
@@ -128,6 +129,18 @@ class ApiClient {
       return ((r.data['results'] as List?) ?? const [])
           .cast<Map<String, dynamic>>()
           .map(ResultPoint.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      _fail(e);
+    }
+  }
+
+  Future<List<Recommendation>> recommendations() async {
+    try {
+      final r = await _dio.get('/recommendations/me');
+      return ((r.data['recommendations'] as List?) ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map(Recommendation.fromJson)
           .toList();
     } on DioException catch (e) {
       _fail(e);

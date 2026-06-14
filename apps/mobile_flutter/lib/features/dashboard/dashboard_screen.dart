@@ -6,6 +6,7 @@ import '../../models/biomarker.dart';
 import '../../theme/tokens.dart';
 import '../biomarkers/biomarkers_provider.dart';
 import '../notifications/notifications_screen.dart';
+import '../recommendations/recommendations_screen.dart';
 import '../score/score_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -55,8 +56,13 @@ class DashboardScreen extends ConsumerWidget {
           const SizedBox(height: 10),
           const _DashCard(icon: Icons.auto_awesome, title: 'VITAL AI', subtitle: 'Insights & answers from your results'),
           const SizedBox(height: 10),
-          const _DashCard(
-              icon: Icons.checklist, title: 'Recommendations', subtitle: 'Supplements & lifestyle tailored to you'),
+          _DashCard(
+            icon: Icons.checklist,
+            title: 'Recommendations',
+            subtitle: 'Supplements & lifestyle tailored to you',
+            onTap: () =>
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RecommendationsScreen())),
+          ),
           const SizedBox(height: 10),
           const _DashCard(
               icon: Icons.event_available, title: 'Book a Test', subtitle: 'Schedule a home blood draw near you'),
