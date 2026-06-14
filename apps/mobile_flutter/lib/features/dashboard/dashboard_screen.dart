@@ -5,6 +5,8 @@ import '../../core/auth.dart';
 import '../../models/biomarker.dart';
 import '../../theme/tokens.dart';
 import '../biomarkers/biomarkers_provider.dart';
+import '../notifications/notifications_screen.dart';
+import '../score/score_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   final VoidCallback onOpenLabs;
@@ -20,20 +22,44 @@ class DashboardScreen extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         children: [
-          Text('WELCOME BACK',
-              style: bodyText(12, weight: FontWeight.w600, color: T.accent).copyWith(letterSpacing: 2)),
-          const SizedBox(height: 4),
-          Text(firstName, style: display(34, color: T.ink)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('WELCOME BACK',
+                        style: bodyText(12, weight: FontWeight.w600, color: T.accent).copyWith(letterSpacing: 2)),
+                    const SizedBox(height: 4),
+                    Text(firstName, style: display(34, color: T.ink)),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.notifications_none, color: T.ink),
+                onPressed: () => Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (_) => const NotificationsScreen())),
+              ),
+            ],
+          ),
           const SizedBox(height: 24),
           if (counts.tested > 0) _CountBarHero(counts: counts, onTap: onOpenLabs),
           const SizedBox(height: 16),
-          _DashCard(icon: Icons.show_chart, title: 'VITAL Score', subtitle: 'Your overall health score & trend'),
+          _DashCard(
+            icon: Icons.show_chart,
+            title: 'VITAL Score',
+            subtitle: 'Your overall health score & trend',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScoreScreen())),
+          ),
           const SizedBox(height: 10),
-          _DashCard(icon: Icons.auto_awesome, title: 'VITAL AI', subtitle: 'Insights & answers from your results'),
+          const _DashCard(icon: Icons.auto_awesome, title: 'VITAL AI', subtitle: 'Insights & answers from your results'),
           const SizedBox(height: 10),
-          _DashCard(icon: Icons.checklist, title: 'Recommendations', subtitle: 'Supplements & lifestyle tailored to you'),
+          const _DashCard(
+              icon: Icons.checklist, title: 'Recommendations', subtitle: 'Supplements & lifestyle tailored to you'),
           const SizedBox(height: 10),
-          _DashCard(icon: Icons.event_available, title: 'Book a Test', subtitle: 'Schedule a home blood draw near you'),
+          const _DashCard(
+              icon: Icons.event_available, title: 'Book a Test', subtitle: 'Schedule a home blood draw near you'),
         ],
       ),
     );
@@ -121,18 +147,22 @@ class _DashCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String subtitle;
-  const _DashCard({required this.icon, required this.title, required this.subtitle});
+  final VoidCallback? onTap;
+  const _DashCard({required this.icon, required this.title, required this.subtitle, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: T.panel,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: T.line),
-      ),
-      child: Row(
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: T.panel,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: T.line),
+        ),
+        child: Row(
         children: [
           Icon(icon, size: 22, color: T.accent),
           const SizedBox(width: 12),
@@ -145,8 +175,9 @@ class _DashCard extends StatelessWidget {
               ],
             ),
           ),
-          const Icon(Icons.chevron_right, size: 20, color: T.inkSoft),
-        ],
+            const Icon(Icons.chevron_right, size: 20, color: T.inkSoft),
+          ],
+        ),
       ),
     );
   }

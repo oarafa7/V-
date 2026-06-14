@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../models/biomarker.dart';
+import '../models/notification.dart';
+import '../models/score.dart';
 import '../models/user.dart';
 
 /// Backend base URL — pass with `--dart-define=API_URL=https://...`.
@@ -77,7 +79,63 @@ class ApiClient {
     }
   }
 
+  Future<VitalScore?> score() async {
+    try {
+      final r = await _dio.get('/score/me');
+      final s = r.data['score'] as Map<String, dynamic>?;
+      return s == null ? null : VitalScore.fromJson(s);
+    } on DioException catch (e) {
+      _fail(e);
+    }
+  }
+
+  Future<List<ScorePoint>> scoreHistory() async {
+    try {
+      final r = await _dio.get('/score/me/history');
+      return ((r.data['history'] as List?) ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map(ScorePoint.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      _fail(e);
+    }
+  }
+
+  Future<({List<AppNotification> items, int unread})> notifications() async {
+    try {
+      final r = await _dio.get('/notifications/me');
+      final items = ((r.data['notifications'] as List?) ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map(AppNotification.fromJson)
+          .toList();
+      return (items: items, unread: (r.data['unread_count'] as num?)?.toInt() ?? 0);
+    } on DioException catch (e) {
+      _fail(e);
+    }
+  }
+
+  Future<void> markNotificationsRead(List<String> ids) async {
+    try {
+      await _dio.post('/notifications/me/read', data: {'ids': ids});
+    } on DioException catch (e) {
+      _fail(e);
+    }
+  }
+
+  Future<List<ResultPoint>> resultHistory(String biomarkerId) async {
+    try {
+      final r = await _dio.get('/results/me/$biomarkerId');
+      return ((r.data['results'] as List?) ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map(ResultPoint.fromJson)
+          .toList();
+    } on DioException catch (e) {
+      _fail(e);
+    }
+  }
+
   Future<void> logout() => _tokens.clear();
 }
 
 final apiProvider = Provider((ref) => ApiClient(ref.read(tokenStoreProvider)));
+

@@ -5,6 +5,7 @@ import '../../models/biomarker.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/range_bar.dart';
 import '../../widgets/status_dial.dart';
+import '../biomarker/biomarker_detail_screen.dart';
 import 'biomarkers_provider.dart';
 
 const _order = [
@@ -156,37 +157,42 @@ class _MarkerRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = T.statusColor(m.status);
     final has = m.value != null;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 5),
-            child: Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(m.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: bodyText(14, color: T.ink)),
-                const SizedBox(height: 6),
-                if (has) RangeBar(marker: m) else Text('Not tested yet', style: bodyText(12, color: T.inkMuted)),
-              ],
+    return InkWell(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => BiomarkerDetailScreen(marker: m)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 5),
+              child: Container(width: 7, height: 7, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
             ),
-          ),
-          if (has) ...[
             const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(_fmt(m.value!), style: display(17, color: color)),
-                Text(m.unit, style: bodyText(10, color: T.inkMuted)),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(m.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: bodyText(14, color: T.ink)),
+                  const SizedBox(height: 6),
+                  if (has) RangeBar(marker: m) else Text('Not tested yet', style: bodyText(12, color: T.inkMuted)),
+                ],
+              ),
             ),
+            if (has) ...[
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(_fmt(m.value!), style: display(17, color: color)),
+                  Text(m.unit, style: bodyText(10, color: T.inkMuted)),
+                ],
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
