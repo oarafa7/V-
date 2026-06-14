@@ -26,6 +26,9 @@ class AppUser {
 
   String get firstName => fullName.split(' ').first;
 
-  /// New users haven't completed onboarding until they've picked health goals.
-  bool get needsOnboarding => healthGoals.isEmpty;
+  /// Route a user into onboarding only when their profile is essentially blank
+  /// (a fresh signup). Once the health profile is set (gender), they can reach
+  /// the app even if they skipped/failed the goals step, instead of being
+  /// trapped on every sign-in.
+  bool get needsOnboarding => gender == null && healthGoals.isEmpty;
 }

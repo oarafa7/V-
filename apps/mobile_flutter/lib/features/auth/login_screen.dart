@@ -31,11 +31,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     await ref.read(authProvider.notifier).login(_email.text.trim(), _password.text);
     if (!mounted) return;
     final state = ref.read(authProvider);
-    setState(() {
-      _busy = false;
-      _error = state.hasError ? state.error.toString() : null;
-    });
-    // On success the AuthGate swaps this screen out automatically.
+    if (state.hasError) {
+      setState(() {
+        _busy = false;
+        _error = state.error.toString();
+      });
+    } else {
+      // Success — pop back to the root so the AuthGate (now Home/Onboarding)
+      // is visible; this screen was pushed on top of it.
+      Navigator.of(context).popUntil((r) => r.isFirst);
+    }
   }
 
   @override
