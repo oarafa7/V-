@@ -452,6 +452,17 @@ export const bookings = pgTable('bookings', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Admin-managed messages a visiting doctor can push to a patient
+ *  (e.g. "Doctor arriving within 30 minutes"). */
+export const notificationTemplates = pgTable('notification_templates', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: text('title').notNull(),
+  body: text('body').notNull(),
+  isActive: boolean('is_active').notNull().default(true),
+  displayOrder: integer('display_order').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Service areas a lab partner is assigned to (scopes what they can see). */
 export const labPartnerAreas = pgTable(
   'lab_partner_areas',
@@ -545,3 +556,4 @@ export type AvailabilityOverrideRow = typeof availabilityOverrides.$inferSelect;
 export type BookingSlotRow = typeof bookingSlots.$inferSelect;
 export type BookingRow = typeof bookings.$inferSelect;
 export type LabPartnerAreaRow = typeof labPartnerAreas.$inferSelect;
+export type NotificationTemplateRow = typeof notificationTemplates.$inferSelect;

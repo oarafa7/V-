@@ -24,6 +24,7 @@ const TYPE_ICON: Record<string, string> = {
   score: 'TrendingDown',
   insight: 'Sparkles',
   booking: 'CalendarCheck',
+  visit: 'Navigation',
   results: 'FlaskConical',
   announcement: 'Megaphone',
   system: 'Bell',

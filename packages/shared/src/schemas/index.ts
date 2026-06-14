@@ -437,3 +437,17 @@ export const assignPartnerAreasSchema = z.object({
   area_ids: z.array(z.string().uuid()),
 });
 export type AssignPartnerAreasInput = z.infer<typeof assignPartnerAreasSchema>;
+
+// Visit notification templates (admin-managed; pushed by the visiting doctor)
+export const notificationTemplateInputSchema = z.object({
+  title: z.string().min(1).max(120),
+  body: z.string().min(1).max(300),
+  is_active: z.boolean().default(true),
+  display_order: z.number().int().default(0),
+});
+export type NotificationTemplateInput = z.infer<typeof notificationTemplateInputSchema>;
+export const notificationTemplateUpdateSchema = notificationTemplateInputSchema.partial();
+export type NotificationTemplateUpdateInput = z.infer<typeof notificationTemplateUpdateSchema>;
+
+export const sendVisitNotificationSchema = z.object({ template_id: z.string().uuid() });
+export type SendVisitNotificationInput = z.infer<typeof sendVisitNotificationSchema>;

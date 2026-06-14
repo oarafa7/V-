@@ -28,6 +28,8 @@ import {
   interventionInputSchema,
   interventionUpdateSchema,
   notificationConfigSchema,
+  notificationTemplateInputSchema,
+  notificationTemplateUpdateSchema,
   planInputSchema,
   planUpdateSchema,
   serviceAreaInputSchema,
@@ -51,6 +53,7 @@ import {
   interventions,
   labPartnerAreas,
   labUploads,
+  notificationTemplates,
   notifications,
   serviceAreas,
   subscriptionPlans,
@@ -77,6 +80,7 @@ import {
   serializeIntervention,
   serializeHealthGoal,
   serializeLabUpload,
+  serializeNotificationTemplate,
   serializeOverride,
   serializePlan,
   serializeResult,
@@ -1228,5 +1232,51 @@ adminRoutes.delete('/partners/:id', async (c) => {
     .where(and(eq(users.id, partnerId), eq(users.role, 'lab_partner')))
     .returning({ id: users.id });
   if (!row) return errorResponse(c, 'not_found', 'Lab partner not found');
+  return c.json({ success: true });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Visit notification templates (messages the visiting doctor pushes)
+// ─────────────────────────────────────────────────────────────────────────────
+
+adminRoutes.get('/notification-templates', async (c) => {
+  const rows = await db
+    .select()
+    .from(notificationTemplates)
+    .orderBy(asc(notificationTemplates.displayOrder), asc(notificationTemplates.title));
+  return c.json({ templates: rows.map(serializeNotificationTemplate) });
+});
+
+adminRoutes.post('/notification-templates', validate('json', notificationTemplateInputSchema), async (c) => {
+  const b = c.req.valid('json');
+  const [row] = await db
+    .insert(notificationTemplates)
+    .values({ title: b.title, body: b.body, isActive: b.is_active, displayOrder: b.display_order })
+    .returning();
+  return c.json({ template: serializeNotificationTemplate(row!) }, 201);
+});
+
+adminRoutes.put('/notification-templates/:id', validate('json', notificationTemplateUpdateSchema), async (c) => {
+  const b = c.req.valid('json');
+  const [row] = await db
+    .update(notificationTemplates)
+    .set({
+      ...(b.title !== undefined ? { title: b.title } : {}),
+      ...(b.body !== undefined ? { body: b.body } : {}),
+      ...(b.is_active !== undefined ? { isActive: b.is_active } : {}),
+      ...(b.display_order !== undefined ? { displayOrder: b.display_order } : {}),
+    })
+    .where(eq(notificationTemplates.id, c.req.param('id')))
+    .returning();
+  if (!row) return errorResponse(c, 'not_found', 'Template not found');
+  return c.json({ template: serializeNotificationTemplate(row) });
+});
+
+adminRoutes.delete('/notification-templates/:id', async (c) => {
+  const [deleted] = await db
+    .delete(notificationTemplates)
+    .where(eq(notificationTemplates.id, c.req.param('id')))
+    .returning();
+  if (!deleted) return errorResponse(c, 'not_found', 'Template not found');
   return c.json({ success: true });
 });

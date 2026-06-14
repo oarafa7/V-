@@ -1,6 +1,12 @@
 'use client';
 
-import type { Booking, LabUpload, ParsedLabRow, PartnerUserDetail } from '@vital/shared';
+import type {
+  Booking,
+  LabUpload,
+  NotificationTemplate,
+  ParsedLabRow,
+  PartnerUserDetail,
+} from '@vital/shared';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
@@ -19,6 +25,17 @@ import {
   StatusPill,
 } from '@/components/ui';
 import { ApiError, api, type BiomarkerOption } from '@/lib/api';
+
+/** Build a Google Maps directions URL — prefers exact coords, falls back to the address. */
+function mapsUrl(appointment: Booking): string | null {
+  if (appointment.latitude != null && appointment.longitude != null) {
+    return `https://www.google.com/maps/search/?api=1&query=${appointment.latitude},${appointment.longitude}`;
+  }
+  if (appointment.address?.trim()) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(appointment.address)}`;
+  }
+  return null;
+}
 
 export default function AppointmentDetailPage() {
   // useSearchParams must sit under a Suspense boundary for the production build.
@@ -127,7 +144,7 @@ function AppointmentDetail() {
                 <LabelRow label="Time" value={`${appointment.start_time}–${appointment.end_time}`} />
                 <LabelRow label="Area" value={appointment.area_name} />
                 <LabelRow label="Address" value={appointment.address ?? '—'} copyable />
-                <div className="mt-3">
+                <div className="mt-3 flex flex-wrap items-center gap-3">
                   <StatusPill
                     status={
                       appointment.status === 'booked'
@@ -137,12 +154,30 @@ function AppointmentDetail() {
                           : 'cancelled'
                     }
                   />
+                  {mapsUrl(appointment) ? (
+                    <a
+                      href={mapsUrl(appointment) as string}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition hover:bg-accent/90"
+                    >
+                      ↗ Navigate in Google Maps
+                    </a>
+                  ) : null}
                 </div>
+                {appointment.latitude != null && appointment.longitude != null ? (
+                  <p className="mt-2 text-xs text-inkMuted">
+                    Pinned location: {appointment.latitude.toFixed(5)}, {appointment.longitude.toFixed(5)}
+                  </p>
+                ) : null}
               </>
             ) : (
               <div className="text-sm text-inkMuted">No appointment found.</div>
             )}
           </Card>
+
+          {/* 2. Notify patient — preset visit notifications (admin-managed) */}
+          <NotifyCard userId={userId} className="md:col-span-2" />
 
           {/* 1d. Notes */}
           <Card className="p-5">
@@ -159,6 +194,74 @@ function AppointmentDetail() {
         <UploadTab userId={userId} defaultTestedAt={appointment?.date} onImported={load} />
       )}
     </div>
+  );
+}
+
+/**
+ * Notify-patient card: lists the admin-managed visit-notification presets as
+ * buttons. Tapping one pushes that message to the patient (in-app feed + push)
+ * — e.g. "Your VITAL doctor is on the way and will arrive within 30 minutes."
+ */
+function NotifyCard({ userId, className = '' }: { userId: string; className?: string }) {
+  const { push } = useToast();
+  const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sendingId, setSendingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .notificationTemplates()
+      .then((r) => setTemplates(r.templates))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const send = async (t: NotificationTemplate) => {
+    setSendingId(t.id);
+    try {
+      await api.notify(userId, t.id);
+      push('success', `Sent “${t.title}” to the patient`);
+    } catch (e) {
+      push('error', e instanceof ApiError ? e.message : 'Failed to send');
+    } finally {
+      setSendingId(null);
+    }
+  };
+
+  return (
+    <Card className={`p-5 ${className}`}>
+      <EyebrowLabel>Notify patient</EyebrowLabel>
+      <p className="mb-3 text-sm text-inkSoft">
+        Send a preset update to the patient before you arrive. They receive it as a push
+        notification and in their app.
+      </p>
+      {loading ? (
+        <div className="text-sm text-inkMuted">Loading messages…</div>
+      ) : templates.length === 0 ? (
+        <div className="text-sm text-inkMuted">
+          No message presets yet. An admin can add them in the dashboard.
+        </div>
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {templates.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => send(t)}
+              disabled={sendingId !== null}
+              className="rounded-lg border border-line bg-card px-4 py-3 text-left transition hover:border-accent hover:bg-accent/5 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-medium text-ink">{t.title}</span>
+                <span className="shrink-0 text-xs text-accent">
+                  {sendingId === t.id ? 'Sending…' : 'Send →'}
+                </span>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-inkSoft">{t.body}</p>
+            </button>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }
 

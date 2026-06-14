@@ -479,6 +479,7 @@ export type NotificationType =
   | 'score'
   | 'insight'
   | 'booking'
+  | 'visit'
   | 'results'
   | 'announcement'
   | 'system';
@@ -649,6 +650,16 @@ export interface PartnerUserDetail {
   appointments: Booking[];
   lab_uploads: LabUpload[];
   results: UserBiomarkerResult[];
+}
+
+/** An admin-managed message a visiting doctor can push to a patient
+ *  (e.g. "Doctor arriving within 30 minutes"). */
+export interface NotificationTemplate {
+  id: UUID;
+  title: string;
+  body: string;
+  is_active: boolean;
+  display_order: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

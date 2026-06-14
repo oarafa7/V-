@@ -85,6 +85,13 @@
       "when": 1781287361496,
       "tag": "0011_chat_message_seq",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1781461504484,
+      "tag": "0012_notification_templates",
+      "breakpoints": true
     }
   ]
 }

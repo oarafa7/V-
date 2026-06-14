@@ -5,6 +5,7 @@
 import type {
   ConfirmLabUploadInput,
   LabUpload,
+  NotificationTemplate,
   PartnerAppointment,
   PartnerUserDetail,
   ServiceArea,
@@ -118,5 +119,14 @@ export const api = {
     request<{ success: boolean; imported: number }>(`/lab-partner/lab-uploads/${id}/confirm`, {
       method: 'POST',
       body,
+    }),
+
+  // visit notifications — preset templates the doctor pushes before/while visiting
+  notificationTemplates: () =>
+    request<{ templates: NotificationTemplate[] }>('/lab-partner/notification-templates'),
+  notify: (userId: string, templateId: string) =>
+    request<{ success: boolean }>(`/lab-partner/users/${userId}/notify`, {
+      method: 'POST',
+      body: { template_id: templateId },
     }),
 };

@@ -7,7 +7,7 @@
  */
 import { BIOMARKER_SEED, CATEGORY_SEED } from '@vital/shared/data/biomarkers.js';
 import { DEFAULT_APP_CONTENT } from '@vital/shared';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 import { db } from '../client.js';
 import {
@@ -17,6 +17,7 @@ import {
   biomarkers,
   healthGoals,
   interventions,
+  notificationTemplates,
   serviceAreas,
   subscriptionPlans,
 } from '../schema.js';
@@ -233,6 +234,20 @@ async function seedAreas() {
   await db.insert(availabilityWindows).values(windows);
 }
 
+/** Default visit-notification templates (idempotent — only seeds when empty). */
+async function seedNotificationTemplates() {
+  const [{ n } = { n: 0 }] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(notificationTemplates);
+  if (n > 0) return;
+  await db.insert(notificationTemplates).values([
+    { title: 'On the way', body: 'Your VITAL doctor is on the way and will arrive within 30 minutes.', displayOrder: 1 },
+    { title: 'Arriving soon', body: 'Your VITAL doctor will arrive within 10 minutes. Please be ready.', displayOrder: 2 },
+    { title: 'Arrived', body: 'Your VITAL doctor has arrived at your address.', displayOrder: 3 },
+    { title: 'Running late', body: 'Your VITAL doctor is running a little late and will be with you shortly. Thank you for your patience.', displayOrder: 4 },
+  ]);
+}
+
 async function main() {
   console.log('Seeding categories…');
   const slugToId = await seedCategories();
@@ -259,6 +274,9 @@ async function main() {
 
   console.log('Seeding demo service area…');
   await seedAreas();
+
+  console.log('Seeding notification templates…');
+  await seedNotificationTemplates();
 
   console.log('Seed complete.');
   process.exit(0);

@@ -21,6 +21,7 @@ import type {
   Intervention,
   InterventionCategory,
   LabUpload,
+  NotificationTemplate,
   PartnerUserSummary,
   ScoreBand,
   ScoreHistoryPoint,
@@ -43,6 +44,7 @@ import type {
   InterventionRow,
   LabUploadRow,
   NotificationRow,
+  NotificationTemplateRow,
   ScoreSnapshotRow,
   ServiceAreaRow,
   SubscriptionPlanRow,
@@ -332,5 +334,15 @@ export function serializeBooking(row: BookingRow, areaName: string): Booking {
     longitude: row.longitude != null ? num(row.longitude) : null,
     notes: row.notes,
     created_at: iso(row.createdAt),
+  };
+}
+
+export function serializeNotificationTemplate(row: NotificationTemplateRow): NotificationTemplate {
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    is_active: row.isActive,
+    display_order: row.displayOrder,
   };
 }

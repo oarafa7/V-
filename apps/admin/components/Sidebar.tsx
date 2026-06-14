@@ -18,6 +18,7 @@ const NAV = [
   { href: '/content', label: 'App Content' },
   { href: '/interventions', label: 'Interventions' },
   { href: '/notifications', label: 'Notifications' },
+  { href: '/visit-notifications', label: 'Visit Notifications' },
   { href: '/ai', label: 'AI Intelligence' },
 ];
 

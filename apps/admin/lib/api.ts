@@ -39,6 +39,9 @@ import type {
   NotificationConfig,
   NotificationConfigInput,
   NotificationStats,
+  NotificationTemplate,
+  NotificationTemplateInput,
+  NotificationTemplateUpdateInput,
   PlanInput,
   PlanUpdateInput,
   RecommendedIntervention,
@@ -261,6 +264,22 @@ export const api = {
       body,
     }),
   notificationStats: () => request<{ stats: NotificationStats }>('/admin/notifications/stats'),
+
+  // visit-notification templates (presets the visiting doctor pushes to patients)
+  notificationTemplates: () =>
+    request<{ templates: NotificationTemplate[] }>('/admin/notification-templates'),
+  createNotificationTemplate: (body: NotificationTemplateInput) =>
+    request<{ template: NotificationTemplate }>('/admin/notification-templates', {
+      method: 'POST',
+      body,
+    }),
+  updateNotificationTemplate: (id: string, body: NotificationTemplateUpdateInput) =>
+    request<{ template: NotificationTemplate }>(`/admin/notification-templates/${id}`, {
+      method: 'PUT',
+      body,
+    }),
+  deleteNotificationTemplate: (id: string) =>
+    request<{ success: boolean }>(`/admin/notification-templates/${id}`, { method: 'DELETE' }),
 
   // test booking — areas, availability, bookings
   areas: () => request<{ areas: ServiceArea[] }>('/admin/areas'),

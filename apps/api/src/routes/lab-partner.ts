@@ -4,7 +4,11 @@
  * upload result PDFs that flow through the shared parse → review → confirm
  * pipeline into the patient's record.
  */
-import { confirmLabUploadSchema, type PartnerAppointment } from '@vital/shared';
+import {
+  confirmLabUploadSchema,
+  type PartnerAppointment,
+  sendVisitNotificationSchema,
+} from '@vital/shared';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 
@@ -14,6 +18,7 @@ import {
   bookings,
   labPartnerAreas,
   labUploads,
+  notificationTemplates,
   serviceAreas,
   userBiomarkerResults,
   users,
@@ -21,10 +26,12 @@ import {
 import { errorResponse } from '../lib/http.js';
 import { confirmUpload, parseAndStoreUpload } from '../lib/lab-upload.js';
 import { activePlanSummary, partnerAreaIds, partnerCanAccessUser } from '../lib/lab-partner.js';
+import { notifyUser } from '../lib/notifications.js';
 import {
   serializeArea,
   serializeBooking,
   serializeLabUpload,
+  serializeNotificationTemplate,
   serializePartnerUserSummary,
   serializeResult,
 } from '../lib/serialize.js';
@@ -191,4 +198,41 @@ labPartnerRoutes.post('/lab-uploads/:id/confirm', validate('json', confirmLabUpl
   }
   const { imported } = await confirmUpload(id, c.req.valid('json'));
   return c.json({ success: true, imported });
+});
+
+/** Active visit-notification templates (e.g. "Doctor arriving within 30 min"). */
+labPartnerRoutes.get('/notification-templates', async (c) => {
+  const rows = await db
+    .select()
+    .from(notificationTemplates)
+    .where(eq(notificationTemplates.isActive, true))
+    .orderBy(asc(notificationTemplates.displayOrder), asc(notificationTemplates.title));
+  return c.json({ templates: rows.map(serializeNotificationTemplate) });
+});
+
+/** Push a visit notification to a patient (access-checked to the partner's areas). */
+labPartnerRoutes.post('/users/:userId/notify', validate('json', sendVisitNotificationSchema), async (c) => {
+  const partner = c.get('user');
+  const userId = c.req.param('userId');
+  if (!(await partnerCanAccessUser(partner.id, userId))) {
+    return errorResponse(c, 'forbidden', 'This patient is not in your service areas');
+  }
+  const { template_id } = c.req.valid('json');
+  const [tpl] = await db
+    .select()
+    .from(notificationTemplates)
+    .where(and(eq(notificationTemplates.id, template_id), eq(notificationTemplates.isActive, true)))
+    .limit(1);
+  if (!tpl) return errorResponse(c, 'not_found', 'Template not found');
+
+  await notifyUser(userId, {
+    type: 'visit',
+    severity: 'info',
+    title: tpl.title,
+    body: tpl.body,
+    link: 'booking',
+    // Unique per send so the same message can be pushed more than once.
+    dedupeKey: `visit:${template_id}:${Date.now()}`,
+  });
+  return c.json({ success: true });
 });
