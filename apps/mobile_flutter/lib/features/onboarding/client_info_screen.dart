@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/location_picker.dart';
 
 /// Step 2 of post-signup onboarding — activity level and address.
 class ClientInfoScreen extends ConsumerStatefulWidget {
@@ -24,6 +25,8 @@ const _activityLevels = <({String slug, String title, String hint})>[
 class _ClientInfoScreenState extends ConsumerState<ClientInfoScreen> {
   final _address = TextEditingController();
   String? _level;
+  double? _lat;
+  double? _lng;
   bool _busy = false;
   String? _error;
 
@@ -46,6 +49,8 @@ class _ClientInfoScreenState extends ConsumerState<ClientInfoScreen> {
       await ref.read(apiProvider).dio.put('/users/me/client-info', data: {
         'activity_level': _level,
         'address': _address.text.trim(),
+        if (_lat != null) 'latitude': _lat,
+        if (_lng != null) 'longitude': _lng,
       });
       if (!mounted) return;
       widget.onNext();
@@ -96,7 +101,14 @@ class _ClientInfoScreenState extends ConsumerState<ClientInfoScreen> {
                   style: bodyText(11, weight: FontWeight.w600, color: T.inkMuted)
                       .copyWith(letterSpacing: 1.2)),
               const SizedBox(height: 8),
-              // TODO: Google Maps picker via webview_flutter
+              LocationPicker(
+                onPick: (loc) => setState(() {
+                  _lat = loc.latitude;
+                  _lng = loc.longitude;
+                  if (loc.address.isNotEmpty) _address.text = loc.address;
+                }),
+              ),
+              const SizedBox(height: 8),
               TextField(
                 controller: _address,
                 enabled: !_busy,

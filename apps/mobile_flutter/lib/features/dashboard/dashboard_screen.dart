@@ -6,6 +6,7 @@ import '../../models/biomarker.dart';
 import '../../theme/tokens.dart';
 import '../biomarkers/biomarkers_provider.dart';
 import '../booking/booking_screen.dart';
+import '../category/category_detail_screen.dart';
 import '../insights/insights_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../recommendations/recommendations_screen.dart';
@@ -77,6 +78,8 @@ class DashboardScreen extends ConsumerWidget {
             subtitle: 'Schedule a home blood draw near you',
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BookingScreen())),
           ),
+          const SizedBox(height: 22),
+          const _CategoriesRow(),
         ],
       ),
     );
@@ -156,6 +159,46 @@ class _CountBarHero extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _CategoriesRow extends ConsumerWidget {
+  const _CategoriesRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final cats = ref.watch(categoriesProvider).valueOrNull ?? const [];
+    if (cats.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('CATEGORIES',
+            style: bodyText(11, weight: FontWeight.w600, color: T.accent).copyWith(letterSpacing: 2)),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final c in cats)
+              InkWell(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => CategoryDetailScreen(slug: c.slug, name: c.name)),
+                ),
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: T.panel,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: T.line),
+                  ),
+                  child: Text(c.name, style: bodyText(13, color: T.ink)),
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }

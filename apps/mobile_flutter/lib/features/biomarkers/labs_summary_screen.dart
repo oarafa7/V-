@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/biomarker.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/locked_view.dart';
 import '../../widgets/range_bar.dart';
 import '../../widgets/status_dial.dart';
 import '../biomarker/biomarker_detail_screen.dart';
+import '../subscription/subscription_provider.dart';
 import 'biomarkers_provider.dart';
 
 const _order = [
@@ -20,6 +22,10 @@ class LabsSummaryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Non-subscribers get the lock/upsell instead of the (gated) data.
+    if (ref.watch(subscriptionActiveProvider).valueOrNull == false) {
+      return const SafeArea(child: LockedView());
+    }
     final markersAsync = ref.watch(biomarkersProvider);
     final counts = ref.watch(countsProvider);
 

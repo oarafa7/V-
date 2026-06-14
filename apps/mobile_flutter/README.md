@@ -13,9 +13,14 @@ REST — nothing on the server, web apps, or shared package changes.
 >
 > **Not yet compiled** — Flutter isn't available in the build environment, so
 > this is consistent starter code that needs a local `flutter run` + a short
-> fix-up pass (analyzer errors, minor API-shape tweaks). The remaining polish:
-> the client-info map (webview), go_router (currently Navigator + an AuthGate),
-> and pixel parity once the mobile design pass lands.
+> fix-up pass (analyzer errors, minor API-shape tweaks). Remaining polish:
+> `go_router` (currently Navigator + an AuthGate) and pixel parity once the
+> mobile design pass lands.
+>
+> Subscription-gated screens show a lock/upsell (`LockedView`), categories are
+> browsable from the dashboard, and the client-info screen has a WebView Google
+> Maps picker (pass `--dart-define=GOOGLE_MAPS_KEY=...`; without it it falls
+> back to the manual address field).
 
 ## Stack
 | Concern | Package |
