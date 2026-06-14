@@ -1,0 +1,17 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+*.iml
+
+# IDE
+.idea/
+.vscode/
+
+# Native build dirs (created by `flutter create .`)
+ios/Pods/
+android/.gradle/
+android/local.properties
