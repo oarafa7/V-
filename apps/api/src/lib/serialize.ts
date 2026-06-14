@@ -316,6 +316,7 @@ export function serializePartnerUserSummary(row: UserRow): PartnerUserSummary {
     phone: row.phone,
     date_of_birth: row.dateOfBirth,
     gender: (row.gender as PartnerUserSummary['gender']) ?? null,
+    height_cm: row.heightCm,
   };
 }
 

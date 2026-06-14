@@ -635,6 +635,7 @@ export interface PartnerUserSummary {
   phone: string | null;
   date_of_birth: ISODateString | null;
   gender: Gender | null;
+  height_cm: number | null;
 }
 
 /** A booking enriched for the partner appointments view. */

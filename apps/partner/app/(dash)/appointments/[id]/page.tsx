@@ -1,11 +1,12 @@
 'use client';
 
-import type {
-  Booking,
-  LabUpload,
-  NotificationTemplate,
-  ParsedLabRow,
-  PartnerUserDetail,
+import {
+  ageFromDateOfBirth,
+  type Booking,
+  type LabUpload,
+  type NotificationTemplate,
+  type ParsedLabRow,
+  type PartnerUserDetail,
 } from '@vital/shared';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
@@ -108,6 +109,15 @@ function AppointmentDetail() {
             <LabelRow label="Email" value={user.email} copyable />
             <LabelRow label="Phone" value={user.phone ?? '—'} copyable />
             <LabelRow label="Date of birth" value={user.date_of_birth ?? '—'} />
+            <LabelRow
+              label="Age"
+              value={
+                user.date_of_birth
+                  ? `${ageFromDateOfBirth(user.date_of_birth) ?? '—'} yrs`
+                  : '—'
+              }
+            />
+            <LabelRow label="Height" value={user.height_cm != null ? `${user.height_cm} cm` : '—'} />
             <LabelRow label="Gender" value={user.gender ?? '—'} />
           </Card>
 
