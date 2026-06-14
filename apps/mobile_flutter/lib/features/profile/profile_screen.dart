@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/auth.dart';
 import '../../theme/tokens.dart';
+import '../subscription/plans_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -44,6 +45,25 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          InkWell(
+            onTap: () =>
+                Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PlansScreen())),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                  color: T.panel, borderRadius: BorderRadius.circular(12), border: Border.all(color: T.line)),
+              child: Row(
+                children: [
+                  const Icon(Icons.workspace_premium_outlined, size: 22, color: T.accent),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text('Plans & subscription', style: display(16, color: T.ink))),
+                  const Icon(Icons.chevron_right, size: 20, color: T.inkSoft),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 24),

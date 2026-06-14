@@ -65,6 +65,21 @@ class ApiClient {
     }
   }
 
+  Future<void> signup(String email, String password, String fullName, {String? phone}) async {
+    try {
+      final r = await _dio.post('/auth/signup', data: {
+        'email': email,
+        'password': password,
+        'full_name': fullName,
+        if (phone != null && phone.isNotEmpty) 'phone': phone,
+      });
+      final token = r.data['access_token'] as String?;
+      if (token != null) await _tokens.write(token);
+    } on DioException catch (e) {
+      _fail(e);
+    }
+  }
+
   Future<AppUser> me() async {
     try {
       final r = await _dio.get('/users/me');

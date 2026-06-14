@@ -28,6 +28,19 @@ class AuthController extends AsyncNotifier<AppUser?> {
     });
   }
 
+  Future<void> signup(String email, String password, String fullName, {String? phone}) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await _api.signup(email, password, fullName, phone: phone);
+      return _api.me();
+    });
+  }
+
+  /// Re-fetch the current user (e.g. after onboarding writes the profile/goals).
+  Future<void> refresh() async {
+    state = await AsyncValue.guard(() => _api.me());
+  }
+
   Future<void> logout() async {
     await _api.logout();
     state = const AsyncData(null);

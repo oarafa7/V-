@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/auth.dart';
-import 'features/auth/login_screen.dart';
 import 'features/home/home_shell.dart';
+import 'features/onboarding/onboarding_flow.dart';
+import 'features/onboarding/welcome_screen.dart';
 import 'theme/tokens.dart';
 
 void main() => runApp(const ProviderScope(child: VitalApp()));
@@ -30,8 +31,14 @@ class AuthGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return ref.watch(authProvider).when(
           loading: () => const Scaffold(body: Center(child: CircularProgressIndicator(color: T.accent))),
-          error: (_, __) => const LoginScreen(),
-          data: (user) => user == null ? const LoginScreen() : const HomeShell(),
+          error: (_, __) => const WelcomeScreen(),
+          data: (user) {
+            if (user == null) return const WelcomeScreen();
+            if (user.needsOnboarding) {
+              return OnboardingFlow(onDone: () => ref.read(authProvider.notifier).refresh());
+            }
+            return const HomeShell();
+          },
         );
   }
 }

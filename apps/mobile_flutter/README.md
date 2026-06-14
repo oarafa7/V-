@@ -4,10 +4,18 @@ A Flutter (Dart) port of the VITAL mobile app, built **alongside** the React
 Native app in `apps/mobile`. It talks to the **same backend** (`apps/api`) over
 REST — nothing on the server, web apps, or shared package changes.
 
-> Status: **vertical slice** — auth + Dashboard (count-bar hero) + Labs Summary
-> (status dial + grouped marker list). The remaining ~27 screens are still to be
-> ported. This proves the stack end-to-end (theme, API, auth, custom-painter
-> data-viz) before building out the rest.
+> Status: **all screens ported** (functional). Onboarding (welcome → signup →
+> health profile → client info → goals), Dashboard (count-bar hero), Labs
+> Summary (status dial + grouped list), Biomarker Detail (range-reference
+> chart), VITAL Score, Category Detail, Booking, AI Insights + chat,
+> Recommendations, Notifications, Profile, and Subscription (plans → Paymob
+> checkout → confirmation).
+>
+> **Not yet compiled** — Flutter isn't available in the build environment, so
+> this is consistent starter code that needs a local `flutter run` + a short
+> fix-up pass (analyzer errors, minor API-shape tweaks). The remaining polish:
+> the client-info map (webview), go_router (currently Navigator + an AuthGate),
+> and pixel parity once the mobile design pass lands.
 
 ## Stack
 | Concern | Package |

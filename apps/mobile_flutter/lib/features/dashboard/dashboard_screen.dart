@@ -5,6 +5,8 @@ import '../../core/auth.dart';
 import '../../models/biomarker.dart';
 import '../../theme/tokens.dart';
 import '../biomarkers/biomarkers_provider.dart';
+import '../booking/booking_screen.dart';
+import '../insights/insights_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../recommendations/recommendations_screen.dart';
 import '../score/score_screen.dart';
@@ -54,7 +56,12 @@ class DashboardScreen extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ScoreScreen())),
           ),
           const SizedBox(height: 10),
-          const _DashCard(icon: Icons.auto_awesome, title: 'VITAL AI', subtitle: 'Insights & answers from your results'),
+          _DashCard(
+            icon: Icons.auto_awesome,
+            title: 'VITAL AI',
+            subtitle: 'Insights & answers from your results',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const InsightsScreen())),
+          ),
           const SizedBox(height: 10),
           _DashCard(
             icon: Icons.checklist,
@@ -64,8 +71,12 @@ class DashboardScreen extends ConsumerWidget {
                 Navigator.of(context).push(MaterialPageRoute(builder: (_) => const RecommendationsScreen())),
           ),
           const SizedBox(height: 10),
-          const _DashCard(
-              icon: Icons.event_available, title: 'Book a Test', subtitle: 'Schedule a home blood draw near you'),
+          _DashCard(
+            icon: Icons.event_available,
+            title: 'Book a Test',
+            subtitle: 'Schedule a home blood draw near you',
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const BookingScreen())),
+          ),
         ],
       ),
     );
