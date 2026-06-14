@@ -1923,11 +1923,31 @@ export const BIOMARKER_SEED: BiomarkerSeed[] = [
   },
   {
     category: 'hepatic',
-    name: 'Blood Urea',
+    name: 'Blood Urea Nitrogen (BUN)',
     slug: 'blood-urea-nitrogen',
     unit: 'mg/dL',
     description:
-      'Urea is a waste product from protein breakdown that the kidneys filter out of the blood. It is a basic measure of kidney function and hydration.',
+      'BUN measures the nitrogen in your blood that comes from urea, a waste product of protein breakdown the kidneys filter out. It is a basic measure of kidney function and hydration. (BUN ≈ urea ÷ 2.14.)',
+    why_it_matters:
+      'High BUN can signal reduced kidney function or dehydration; low values can reflect low protein intake or liver issues. It is read alongside creatinine.',
+    what_affects_it:
+      'Hydration, dietary protein, kidney function, and some medications affect it. Dehydration and high-protein diets push it up; over-hydration lowers it.',
+    optimal_low: 8,
+    optimal_high: 18,
+    normal_low: 9,
+    normal_high: 23,
+    min_plausible: 2,
+    max_plausible: 200,
+    display_order: 21,
+    tags: ['bun', 'blood urea nitrogen', 'kidney', 'hepatic', 'waste'],
+  },
+  {
+    category: 'hepatic',
+    name: 'Serum Urea',
+    slug: 'serum-urea',
+    unit: 'mg/dL',
+    description:
+      'Urea is a waste product from protein breakdown that the kidneys filter out of the blood. Reported directly (not as nitrogen), it runs roughly 2.14× the BUN value.',
     why_it_matters:
       'High urea can signal reduced kidney function or dehydration, while low values can reflect low protein intake or liver issues. It is read alongside creatinine.',
     what_affects_it:
@@ -1936,10 +1956,10 @@ export const BIOMARKER_SEED: BiomarkerSeed[] = [
     optimal_high: 40,
     normal_low: 19,
     normal_high: 49,
-    min_plausible: 2,
+    min_plausible: 5,
     max_plausible: 300,
-    display_order: 21,
-    tags: ['urea', 'bun', 'kidney', 'hepatic', 'waste'],
+    display_order: 22,
+    tags: ['urea', 'serum urea', 'kidney', 'hepatic', 'waste'],
   },
   {
     category: 'hormonal',
