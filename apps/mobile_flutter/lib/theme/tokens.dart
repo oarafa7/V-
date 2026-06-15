@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Warm-paper design tokens — mirrors apps/mobile/constants/tokens.js so the
 /// Flutter app matches the React Native app and the design handoff.
@@ -53,30 +52,35 @@ enum BiomarkerStatus {
       };
 }
 
+// Bundled brand fonts (declared in pubspec.yaml) — no runtime fetch.
+const _display = 'Bricolage Grotesque';
+const _body = 'Inter';
+
 /// App-wide ThemeData using Bricolage Grotesque (display) + Inter (body).
 ThemeData buildTheme() {
   final base = ThemeData(
     useMaterial3: true,
     scaffoldBackgroundColor: T.canvas,
     colorScheme: ColorScheme.fromSeed(seedColor: T.accent, brightness: Brightness.light),
+    fontFamily: _body,
   );
-  final body = GoogleFonts.interTextTheme(base.textTheme);
   return base.copyWith(
-    textTheme: body.copyWith(
-      displayLarge: GoogleFonts.bricolageGrotesque(
+    textTheme: base.textTheme.copyWith(
+      displayLarge: const TextStyle(
+        fontFamily: _display,
         fontWeight: FontWeight.w800,
         color: T.ink,
         letterSpacing: -1,
       ),
-      titleLarge: GoogleFonts.bricolageGrotesque(fontWeight: FontWeight.w700, color: T.ink),
+      titleLarge: const TextStyle(fontFamily: _display, fontWeight: FontWeight.w700, color: T.ink),
     ),
   );
 }
 
 /// Display (Bricolage Grotesque) text style helper.
 TextStyle display(double size, {FontWeight weight = FontWeight.w700, Color color = T.ink, double spacing = 0}) =>
-    GoogleFonts.bricolageGrotesque(fontSize: size, fontWeight: weight, color: color, letterSpacing: spacing);
+    TextStyle(fontFamily: _display, fontSize: size, fontWeight: weight, color: color, letterSpacing: spacing);
 
 /// Body (Inter) text style helper.
 TextStyle bodyText(double size, {FontWeight weight = FontWeight.w400, Color color = T.inkSoft, double height = 1.4}) =>
-    GoogleFonts.inter(fontSize: size, fontWeight: weight, color: color, height: height);
+    TextStyle(fontFamily: _body, fontSize: size, fontWeight: weight, color: color, height: height);
