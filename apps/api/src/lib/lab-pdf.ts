@@ -29,11 +29,11 @@ const SLUG_ALIASES: Record<string, string[]> = {
   'ldl-cholesterol': ['ldl', 'ldl cholesterol', 'ldl-c'],
   'hdl-cholesterol': ['hdl', 'hdl cholesterol', 'hdl-c'],
   triglycerides: ['triglycerides', 'tg'],
-  'total-cholesterol': ['total cholesterol', 'cholesterol total'],
+  'total-cholesterol': ['total cholesterol', 'cholesterol total', 'cholesterol'],
   tsh: ['tsh', 'thyroid stimulating hormone'],
   'free-t4': ['free t4', 'ft4'],
   'free-t3': ['free t3', 'ft3'],
-  'vitamin-d3-25-oh': ['vitamin d', '25-oh', '25 oh vitamin d', '25-hydroxyvitamin d'],
+  'vitamin-d-25oh': ['vitamin d', '25-oh', '25 oh vitamin d', '25-hydroxyvitamin d', '25(oh)'],
   'vitamin-b12': ['vitamin b12', 'b12', 'cobalamin'],
   ferritin: ['ferritin'],
   hemoglobin: ['hemoglobin', 'haemoglobin', 'hgb', 'hb'],
@@ -92,12 +92,27 @@ interface RefRange {
  * ("Up to 0.90", "< 5", "> 55"), or on their own line ("60 - 160",
  * "Normal: 4.5 - 5.7"). Returns the first recognisable range, raw + parsed.
  */
-function extractRange(lines: string[], valueIdx: number): RefRange | null {
+function extractRange(
+  lines: string[],
+  valueIdx: number,
+  stop?: (idx: number) => boolean,
+): RefRange | null {
   for (let k = valueIdx; k <= valueIdx + 3 && k < lines.length; k++) {
+    // Don't let a range bleed in from the next result (labs that print the
+    // range before the value leave only the following marker's range nearby).
+    if (k > valueIdx && stop?.(k)) break;
     const raw = lines[k]!.trim();
+    // A wordy, number-free line is the next result's name (e.g. "VLDL
+    // Cholesterol, Serum") — stop before borrowing its range. Units like
+    // "mg/dL" are short single tokens and don't trip this.
+    if (k > valueIdx && !/\d/.test(raw) && (raw.match(/[a-zA-Z]{3,}/g)?.length ?? 0) >= 2) break;
     // Skip prose: real reference ranges are short. This avoids treating clinical
     // notes ("Dyslipidemia management; target goals … < 55,70 …") as a range.
     if (raw.length > 40) continue;
+    // Skip "bad/intermediate" tier rows of a multi-tier reference (e.g. Vitamin D
+    // "Deficiency <20", "Insufficiency 21-29") so we capture the normal tier
+    // ("Sufficiency 30-100"), not a threshold that would misclassify a good value.
+    if (/deficien|insufficien|high\s*risk|borderline|prediabet|diabetic|hypervitamin|abnormal/i.test(raw)) continue;
     const low = raw.toLowerCase();
 
     const upTo = low.match(/up\s*to\s*:?\s*(\d+(?:\.\d+)?)/);
@@ -160,30 +175,21 @@ export async function parseLabPdf(
   // Best match per biomarker (one row each, highest confidence wins).
   const best = new Map<string, ParsedLabRow>();
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]!;
-    const nline = normalize(line);
-
-    // Value: on this line, or — for "name / value / unit" layouts — the next
-    // line if it is a standalone number.
-    let value = extractNumber(line);
-    let valueIdx = i;
-    if (value === null) {
-      const next = i + 1 < lines.length ? pureNumberLine(lines[i + 1]!) : null;
-      value = next;
-      valueIdx = i + 1;
-    }
-    if (value === null) continue;
-
-    // Among all biomarkers whose needle matches this line, keep the single most
-    // specific one (full-name match first, then longest needle) so one value is
-    // never assigned to several markers.
+  // The single most specific biomarker a line names (full-name match first, then
+  // longest needle), or null. Shared by the main match and the forward-scan stop.
+  const bestCandidate = (nline: string): { cand: Candidate; needle: string; full: boolean } | null => {
     let pick: { cand: Candidate; needle: string; full: boolean } | null = null;
     for (const cand of candidates) {
       // Negative context: don't let generic haemoglobin match an HbA1c line.
       // "glycohemoglobin (hba1c)" has no word boundary before "a1c", so match
       // the a1c/glyco substrings directly rather than a bounded \ba1c\b.
       if (cand.bm.slug === 'hemoglobin' && /a1c|glyco/.test(nline)) continue;
+      // "ldl" is a substring of "vldl" and appears in "ldl/hdl" ratio lines;
+      // keep LDL/HDL from matching VLDL, non-HDL, or the cholesterol ratios.
+      if (cand.bm.slug === 'ldl-cholesterol' && /vldl|ldl\s*\/\s*hdl/.test(nline)) continue;
+      if (cand.bm.slug === 'hdl-cholesterol' && /non[-\s]?hdl|\/\s*hdl|hdl\s*\//.test(nline)) continue;
+      // The bare "cholesterol" alias must not match the HDL/LDL/VLDL/ratio lines.
+      if (cand.bm.slug === 'total-cholesterol' && /hdl|ldl|vldl|non[-\s]?hdl|\//.test(nline)) continue;
 
       let matchedNeedle: string | null = null;
       for (const needle of cand.needles) {
@@ -206,7 +212,48 @@ export async function parseLabPdf(
         (full === pick.full && matchedNeedle.length > pick.needle.length);
       if (better) pick = { cand, needle: matchedNeedle, full };
     }
+    return pick;
+  };
+
+  // A short line that names a *different* marker — where a forward value-scan
+  // must stop so one marker can't grab the value below it.
+  const startsOtherMarker = (idx: number, currentId: string): boolean => {
+    const l = lines[idx]!;
+    if (l.trim().length > 45) return false; // long lines are prose/notes
+    const c = bestCandidate(normalize(l));
+    return c !== null && c.cand.bm.id !== currentId;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    const nline = normalize(line);
+
+    // Skip long prose (clinical notes) — they aren't result rows and can falsely
+    // contain a marker name (e.g. a note that mentions "TSH").
+    if (line.length > 60 && extractNumber(line) === null) continue;
+
+    const pick = bestCandidate(nline);
     if (!pick) continue;
+
+    // Value: the first standalone number on a following line (labs print
+    // name → unit → [notes] → value), stopping before the next marker; failing
+    // that, an inline number on the name line itself.
+    let value: number | null = null;
+    let valueIdx = i;
+    for (let k = i + 1; k <= i + 8 && k < lines.length; k++) {
+      if (startsOtherMarker(k, pick.cand.bm.id)) break;
+      const v = pureNumberLine(lines[k]!);
+      if (v !== null) {
+        value = v;
+        valueIdx = k;
+        break;
+      }
+    }
+    if (value === null) {
+      value = extractNumber(line);
+      valueIdx = i;
+    }
+    if (value === null) continue;
 
     const { cand, full } = pick;
     const inRange = value >= cand.bm.minPlausible && value <= cand.bm.maxPlausible;
@@ -216,7 +263,7 @@ export async function parseLabPdf(
 
     const existing = best.get(cand.bm.id);
     if (!existing || confidence > existing.confidence) {
-      const range = extractRange(lines, valueIdx);
+      const range = extractRange(lines, valueIdx, (k) => startsOtherMarker(k, cand.bm.id));
       best.set(cand.bm.id, {
         biomarkerId: cand.bm.id,
         biomarkerName: cand.bm.name,
