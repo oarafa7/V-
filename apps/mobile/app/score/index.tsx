@@ -3,8 +3,8 @@
  * biological age and sub-scores, coverage/confidence, and the markers driving it.
  */
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, LucideIcon, ScoreHero } from '@/components/ui';
@@ -20,6 +20,7 @@ export default function ScoreScreen() {
   const history = useScoreStore((s) => s.history);
   const loaded = useScoreStore((s) => s.loaded);
   const fetchScore = useScoreStore((s) => s.fetch);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   useEffect(() => {
     if (hasActive()) void fetchScore();
@@ -31,10 +32,15 @@ export default function ScoreScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <LucideIcon name="ChevronLeft" size={24} color={colors.white} />
         </Pressable>
-        <Text className="font-display" style={{ color: colors.white, fontSize: 22 }}>
+        <Text className="flex-1 font-display" style={{ color: colors.white, fontSize: 22 }}>
           VITAL Score
         </Text>
+        <Pressable onPress={() => setInfoOpen(true)} hitSlop={10} accessibilityLabel="How the score works">
+          <LucideIcon name="Info" size={22} color={colors.textDim} />
+        </Pressable>
       </View>
+
+      <ScoreInfoModal visible={infoOpen} onClose={() => setInfoOpen(false)} score={score} />
 
       {!loaded ? (
         <View className="flex-1 items-center justify-center">
@@ -123,6 +129,122 @@ function Metric({ label, value, suffix, hint }: { label: string; value: string; 
       </View>
     </View>
   );
+}
+
+function ScoreInfoModal({
+  visible,
+  onClose,
+  score,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  score: { tested_count: number; total_count: number } | null;
+}) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' }}>
+        <Pressable style={{ flex: 1 }} onPress={onClose} />
+        <View
+          style={{
+            backgroundColor: colors.obsidian,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            borderColor: colors.border,
+            borderWidth: 1,
+            maxHeight: '85%',
+          }}
+        >
+          <View className="flex-row items-center justify-between px-5 pt-5 pb-2">
+            <Text className="font-display" style={{ color: colors.white, fontSize: 20 }}>
+              How your score works
+            </Text>
+            <Pressable onPress={onClose} hitSlop={10}>
+              <LucideIcon name="X" size={22} color={colors.textDim} />
+            </Pressable>
+          </View>
+
+          <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 8 }} showsVerticalScrollIndicator={false}>
+            <Text className="font-body" style={{ color: colors.textDim, fontSize: 14, lineHeight: 21 }}>
+              Your VITAL Score (0–100) is a single read on your current health, blended from your
+              blood biomarkers and your biological age.
+            </Text>
+
+            <Section title="What goes into it">
+              <Bullet>
+                <B>Biomarker health</B> — every result is scored against its optimal range (best),
+                the standard normal range (okay), or outside it (needs attention), then averaged
+                across categories.
+              </Bullet>
+              <Bullet>
+                <B>Cardiometabolic health</B> — your metabolic, cardiovascular and inflammatory
+                markers, weighted a little heavier because they drive long-term risk.
+              </Bullet>
+              <Bullet>
+                <B>Biological age</B> — a published model (PhenoAge) estimates your body’s age from
+                key bloods; being younger than your real age lifts the score.
+              </Bullet>
+            </Section>
+
+            <Section title="The other numbers">
+              <Bullet><B>Longevity</B> leans on biological age and cardiometabolic health.</Bullet>
+              <Bullet>
+                <B>Confidence</B> reflects how complete and recent your data is — not how good your
+                health is. It rises as you test more markers and keep them current.
+              </Bullet>
+            </Section>
+
+            <Section title="How it gets better">
+              <Bullet>
+                <B>Test more of the panel.</B> You’re at{' '}
+                <B>
+                  {score ? `${score.tested_count} of ${score.total_count}` : 'a partial set of'}
+                </B>{' '}
+                markers — each new result fills a gap and raises confidence.
+              </Bullet>
+              <Bullet>
+                <B>Move flagged markers toward optimal.</B> The “Holding you back” list has the
+                biggest effect — small improvements there lift the whole score.
+              </Bullet>
+              <Bullet>
+                <B>Re-test regularly.</B> Recent results count for more, so staying current keeps
+                your score accurate and your confidence high.
+              </Bullet>
+            </Section>
+
+            <Text className="mt-4 font-body" style={{ color: colors.textMuted, fontSize: 11, lineHeight: 17 }}>
+              VITAL is for wellness insight, not medical diagnosis. Discuss results with your doctor.
+            </Text>
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View className="mt-5">
+      <Text className="mb-2 font-mono uppercase tracking-widest" style={{ color: colors.gold, fontSize: 11 }}>
+        {title}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
+function Bullet({ children }: { children: React.ReactNode }) {
+  return (
+    <View className="mb-2 flex-row" style={{ gap: 8 }}>
+      <Text style={{ color: colors.gold, fontSize: 14, lineHeight: 21 }}>•</Text>
+      <Text className="flex-1 font-body" style={{ color: colors.textDim, fontSize: 14, lineHeight: 21 }}>
+        {children}
+      </Text>
+    </View>
+  );
+}
+
+function B({ children }: { children: React.ReactNode }) {
+  return <Text style={{ color: colors.white, fontWeight: '600' }}>{children}</Text>;
 }
 
 function DriverList({

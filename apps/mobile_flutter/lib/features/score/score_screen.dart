@@ -16,12 +16,20 @@ class ScoreScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(scoreProvider);
+    final score = async.valueOrNull;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: T.canvas,
         elevation: 0,
         foregroundColor: T.ink,
         title: Text('VITAL Score', style: display(20, color: T.ink)),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline, color: T.inkSoft),
+            tooltip: 'How the score works',
+            onPressed: () => _showScoreInfo(context, score),
+          ),
+        ],
       ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator(color: T.accent)),
@@ -225,4 +233,91 @@ class _Drivers extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Explains how the VITAL score is derived and how it improves. Mirrors the
+/// Expo "How your score works" info sheet.
+void _showScoreInfo(BuildContext context, VitalScore? score) {
+  final coverage = score != null ? '${score.testedCount} of ${score.totalCount}' : 'a partial set of';
+  showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: T.card,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.7,
+      maxChildSize: 0.92,
+      builder: (_, controller) => ListView(
+        controller: controller,
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(color: T.line, borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          Text('How your score works', style: display(20, color: T.ink)),
+          const SizedBox(height: 8),
+          Text(
+            'Your VITAL Score (0–100) is a single read on your current health, blended from your '
+            'blood biomarkers and your biological age.',
+            style: bodyText(14, color: T.inkSoft, height: 1.5),
+          ),
+          _infoSection('What goes into it', [
+            'Biomarker health — every result is scored against its optimal range (best), the '
+                'standard normal range (okay), or outside it (needs attention), then averaged across categories.',
+            'Cardiometabolic health — your metabolic, cardiovascular and inflammatory markers, '
+                'weighted a little heavier because they drive long-term risk.',
+            'Biological age — a published model (PhenoAge) estimates your body’s age from key '
+                'bloods; being younger than your real age lifts the score.',
+          ]),
+          _infoSection('The other numbers', [
+            'Longevity leans on biological age and cardiometabolic health.',
+            'Confidence reflects how complete and recent your data is — not how good your health '
+                'is. It rises as you test more markers and keep them current.',
+          ]),
+          _infoSection('How it gets better', [
+            'Test more of the panel. You’re at $coverage markers — each new result fills a gap and raises confidence.',
+            'Move flagged markers toward optimal. The “Holding you back” list has the biggest '
+                'effect — small improvements there lift the whole score.',
+            'Re-test regularly. Recent results count for more, so staying current keeps your score accurate.',
+          ]),
+          const SizedBox(height: 16),
+          Text(
+            'VITAL is for wellness insight, not medical diagnosis. Discuss results with your doctor.',
+            style: bodyText(11, color: T.inkMuted, height: 1.5),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _infoSection(String title, List<String> bullets) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const SizedBox(height: 20),
+      Text(title.toUpperCase(),
+          style: bodyText(11, weight: FontWeight.w600, color: T.accent).copyWith(letterSpacing: 1.2)),
+      const SizedBox(height: 8),
+      for (final b in bullets)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('•  ', style: bodyText(14, color: T.accent)),
+              Expanded(child: Text(b, style: bodyText(14, color: T.inkSoft, height: 1.5))),
+            ],
+          ),
+        ),
+    ],
+  );
 }
