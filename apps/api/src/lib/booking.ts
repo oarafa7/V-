@@ -202,3 +202,106 @@ export async function cancelBooking(userId: string, bookingId: string) {
     return booking;
   });
 }
+
+/**
+ * Reschedule an existing booking to a new slot (and/or update its notes), with
+ * the same race-safe capacity enforcement as creation. The new slot is claimed
+ * before the old one is freed, so a failed claim leaves the original intact.
+ * Returns the updated booking + area name, or null if it's missing/not editable.
+ */
+export async function rescheduleBooking(
+  userId: string,
+  bookingId: string,
+  input: CreateBookingInput,
+) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (input.date < today) fail('unprocessable', 'That date is in the past.');
+
+  const [area] = await db
+    .select({ id: serviceAreas.id, name: serviceAreas.name, isActive: serviceAreas.isActive })
+    .from(serviceAreas)
+    .where(eq(serviceAreas.id, input.area_id))
+    .limit(1);
+  if (!area || !area.isActive) fail('not_found', 'Area not found or inactive.');
+
+  const { closed, windows } = await baseWindows(input.area_id, input.date);
+  if (closed) fail('unprocessable', 'This date is closed for booking.');
+  const window = windows.find(
+    (w) => w.startTime === input.start_time && w.endTime === input.end_time,
+  );
+  if (!window) fail('unprocessable', 'That slot is not available.');
+
+  return db.transaction(async (tx) => {
+    const [current] = await tx
+      .select()
+      .from(bookings)
+      .where(and(eq(bookings.id, bookingId), eq(bookings.userId, userId)))
+      .limit(1);
+    if (!current || current.status !== 'booked') return null;
+
+    const sameSlot =
+      current.areaId === input.area_id &&
+      current.date === input.date &&
+      current.startTime === window.startTime &&
+      current.endTime === window.endTime;
+
+    // Notes-only edit: no capacity movement needed.
+    if (sameSlot) {
+      const [updated] = await tx
+        .update(bookings)
+        .set({ notes: input.notes ?? null })
+        .where(eq(bookings.id, bookingId))
+        .returning();
+      return { booking: updated!, areaName: area.name };
+    }
+
+    // Claim the target slot first (materialize, then guarded increment).
+    await tx
+      .insert(bookingSlots)
+      .values({
+        areaId: input.area_id,
+        date: input.date,
+        startTime: window.startTime,
+        endTime: window.endTime,
+        capacity: window.capacity,
+        bookedCount: 0,
+      })
+      .onConflictDoNothing({
+        target: [bookingSlots.areaId, bookingSlots.date, bookingSlots.startTime],
+      });
+
+    const [slot] = await tx
+      .update(bookingSlots)
+      .set({ bookedCount: sql`${bookingSlots.bookedCount} + 1` })
+      .where(
+        and(
+          eq(bookingSlots.areaId, input.area_id),
+          eq(bookingSlots.date, input.date),
+          eq(bookingSlots.startTime, window.startTime),
+          sql`${bookingSlots.bookedCount} < ${bookingSlots.capacity}`,
+        ),
+      )
+      .returning({ id: bookingSlots.id });
+    if (!slot) fail('conflict', 'This slot is fully booked. Please choose another.');
+
+    // Release the old slot, then point the booking at the new one.
+    await tx
+      .update(bookingSlots)
+      .set({ bookedCount: sql`greatest(${bookingSlots.bookedCount} - 1, 0)` })
+      .where(eq(bookingSlots.id, current.slotId));
+
+    const [updated] = await tx
+      .update(bookings)
+      .set({
+        slotId: slot.id,
+        areaId: input.area_id,
+        date: input.date,
+        startTime: window.startTime,
+        endTime: window.endTime,
+        notes: input.notes ?? null,
+      })
+      .where(eq(bookings.id, bookingId))
+      .returning();
+    return { booking: updated!, areaName: area.name };
+  });
+}

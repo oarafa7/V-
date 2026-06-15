@@ -137,6 +137,8 @@ export const bookingApi = {
   mine: () => request<{ bookings: Booking[] }>('/bookings/me'),
   book: (input: CreateBookingInput) =>
     request<{ booking: Booking }>('/bookings', { method: 'POST', body: input }),
+  reschedule: (id: string, input: CreateBookingInput) =>
+    request<{ booking: Booking }>(`/bookings/${id}`, { method: 'PUT', body: input }),
   cancel: (id: string) =>
     request<{ success: boolean }>(`/bookings/${id}/cancel`, { method: 'POST' }),
 };

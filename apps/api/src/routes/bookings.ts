@@ -4,6 +4,7 @@
  *   GET  /areas/:id/availability      → resolved slots for the next N days
  *   GET  /bookings/me                 → the user's bookings
  *   POST /bookings                    → book a slot (atomic capacity)
+ *   PUT  /bookings/:id                → reschedule / edit notes (atomic capacity)
  *   POST /bookings/:id/cancel         → cancel a booking
  */
 import { createBookingSchema } from '@vital/shared';
@@ -12,7 +13,7 @@ import { Hono } from 'hono';
 
 import { db } from '../db/client.js';
 import { bookings, serviceAreas } from '../db/schema.js';
-import { cancelBooking, createBooking, resolveRange } from '../lib/booking.js';
+import { cancelBooking, createBooking, rescheduleBooking, resolveRange } from '../lib/booking.js';
 import { errorResponse } from '../lib/http.js';
 import { notifyUser } from '../lib/notifications.js';
 import { serializeArea, serializeBooking } from '../lib/serialize.js';
@@ -72,6 +73,25 @@ bookingRoutes.post('/bookings', validate('json', createBookingSchema), async (c)
   });
 
   return c.json({ booking: serializeBooking(booking, areaName) }, 201);
+});
+
+bookingRoutes.put('/bookings/:id', validate('json', createBookingSchema), async (c) => {
+  const userId = c.get('userId');
+  const result = await rescheduleBooking(userId, c.req.param('id'), c.req.valid('json'));
+  if (!result) return errorResponse(c, 'not_found', 'Booking not found or not editable');
+  const { booking, areaName } = result;
+
+  await notifyUser(userId, {
+    type: 'booking',
+    severity: 'info',
+    title: 'Booking updated',
+    body: `Your home test in ${areaName} is now set for ${booking.date}, ${booking.startTime}–${booking.endTime}.`,
+    link: 'booking',
+    // Unique per change so each reschedule produces its own feed entry.
+    dedupeKey: `booking-updated:${booking.id}:${booking.date}:${booking.startTime}`,
+  });
+
+  return c.json({ booking: serializeBooking(booking, areaName) });
 });
 
 bookingRoutes.post('/bookings/:id/cancel', async (c) => {

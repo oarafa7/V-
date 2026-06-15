@@ -6,7 +6,7 @@
 import type { Booking, DayAvailability, ServiceArea } from '@vital/shared';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, LucideIcon, toast } from '@/components/ui';
@@ -30,6 +30,8 @@ export default function BookTest() {
   const [loading, setLoading] = useState(true);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [booking, setBooking] = useState(false);
+  // When set, picking a slot reschedules this booking instead of creating one.
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([bookingApi.areas(), bookingApi.mine()])
@@ -55,26 +57,51 @@ export default function BookTest() {
 
   const refreshMine = () => bookingApi.mine().then((r) => setMine(r.bookings)).catch(() => {});
 
-  const book = async (date: string, startTime: string, endTime: string) => {
+  const pickSlot = async (date: string, startTime: string, endTime: string) => {
     if (!areaId || booking) return;
     setBooking(true);
     try {
-      await bookingApi.book({ area_id: areaId, date, start_time: startTime, end_time: endTime });
-      toast.success('Test booked');
+      const input = { area_id: areaId, date, start_time: startTime, end_time: endTime };
+      if (editingId) {
+        await bookingApi.reschedule(editingId, input);
+        toast.success('Booking updated');
+        setEditingId(null);
+      } else {
+        await bookingApi.book(input);
+        toast.success('Test booked');
+      }
       const r = await bookingApi.availability(areaId, today(), 14);
       setDays(r.availability);
       void refreshMine();
     } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Could not book');
+      toast.error(e instanceof ApiError ? e.message : editingId ? 'Could not update' : 'Could not book');
     } finally {
       setBooking(false);
     }
+  };
+
+  // Enter reschedule mode: focus the booking's area so its availability shows.
+  const startEdit = (b: Booking) => {
+    setEditingId(b.id);
+    setAreaId(b.area_id);
+  };
+
+  const confirmCancel = (b: Booking) => {
+    Alert.alert(
+      'Cancel booking?',
+      `Your home test in ${b.area_name} on ${b.date} at ${b.start_time} will be cancelled.`,
+      [
+        { text: 'Keep booking', style: 'cancel' },
+        { text: 'Cancel booking', style: 'destructive', onPress: () => cancel(b.id) },
+      ],
+    );
   };
 
   const cancel = async (id: string) => {
     try {
       await bookingApi.cancel(id);
       toast.success('Booking cancelled');
+      if (editingId === id) setEditingId(null);
       void refreshMine();
       if (areaId) bookingApi.availability(areaId, today(), 14).then((r) => setDays(r.availability)).catch(() => {});
     } catch (e) {
@@ -105,15 +132,29 @@ export default function BookTest() {
           {mine.filter((b) => b.status === 'booked').length > 0 ? (
             <View className="mb-4 px-5">
               <Text className="mb-2 font-mono uppercase tracking-widest" style={{ color: colors.gold, fontSize: 11 }}>Your bookings</Text>
-              {mine.filter((b) => b.status === 'booked').map((b) => (
-                <View key={b.id} className="mb-2 flex-row items-center justify-between rounded-lg border p-3" style={{ backgroundColor: colors.surface, borderColor: colors.border }}>
-                  <View>
-                    <Text className="font-body" style={{ color: colors.white, fontSize: 14 }}>{b.area_name} · {b.date}</Text>
-                    <Text className="font-mono" style={{ color: colors.textDim, fontSize: 12 }}>{b.start_time}–{b.end_time}</Text>
+              {mine.filter((b) => b.status === 'booked').map((b) => {
+                const isEditing = editingId === b.id;
+                return (
+                  <View key={b.id} className="mb-2 flex-row items-center justify-between rounded-lg border p-3" style={{ backgroundColor: colors.surface, borderColor: isEditing ? colors.gold : colors.border }}>
+                    <View>
+                      <Text className="font-body" style={{ color: colors.white, fontSize: 14 }}>{b.area_name} · {b.date}</Text>
+                      <Text className="font-mono" style={{ color: colors.textDim, fontSize: 12 }}>{b.start_time}–{b.end_time}</Text>
+                    </View>
+                    <View className="flex-row items-center" style={{ gap: 16 }}>
+                      <Pressable onPress={() => (isEditing ? setEditingId(null) : startEdit(b))}>
+                        <Text className="font-body" style={{ color: colors.gold, fontSize: 13 }}>{isEditing ? 'Done' : 'Edit'}</Text>
+                      </Pressable>
+                      <Pressable onPress={() => confirmCancel(b)}><Text className="font-body" style={{ color: colors.red, fontSize: 13 }}>Cancel</Text></Pressable>
+                    </View>
                   </View>
-                  <Pressable onPress={() => cancel(b.id)}><Text className="font-body" style={{ color: colors.red, fontSize: 13 }}>Cancel</Text></Pressable>
+                );
+              })}
+              {editingId ? (
+                <View className="mt-1 flex-row items-center justify-between rounded-lg px-3 py-2" style={{ backgroundColor: `${colors.gold}18` }}>
+                  <Text className="font-body" style={{ color: colors.gold, fontSize: 12 }}>Pick a new time below to reschedule.</Text>
+                  <Pressable onPress={() => setEditingId(null)}><Text className="font-body" style={{ color: colors.textDim, fontSize: 12 }}>Cancel edit</Text></Pressable>
                 </View>
-              ))}
+              ) : null}
             </View>
           ) : null}
 
@@ -162,7 +203,7 @@ export default function BookTest() {
                       <Pressable
                         key={s.start_time}
                         disabled={full || booking}
-                        onPress={() => book(selectedDay.date, s.start_time, s.end_time)}
+                        onPress={() => pickSlot(selectedDay.date, s.start_time, s.end_time)}
                         className="mb-2 flex-row items-center justify-between rounded-lg border p-4"
                         style={{ backgroundColor: full ? colors.surface : colors.deep, borderColor: full ? colors.border : colors.gold, opacity: full ? 0.55 : 1, minHeight: 56 }}
                       >
