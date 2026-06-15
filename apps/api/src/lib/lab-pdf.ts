@@ -9,8 +9,67 @@
 // Import the inner lib path to avoid pdf-parse's debug block that reads a test
 // file from disk when imported as the main module.
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
+// pdfjs gives per-fragment x/y, letting us rebuild true rows (handles columnar
+// tables that flattened text mangles). Legacy build runs without a DOM in Node.
+import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
 
 import type { ParsedLabRow } from '../db/schema.js';
+
+/**
+ * Reconstruct a PDF into visual rows using each text fragment's coordinates:
+ * fragments sharing a baseline (y) become one line, left-to-right. This pairs a
+ * marker with its value/range even in multi-column lab tables, where flattened
+ * text reads each column top-to-bottom and scrambles rows. Falls back to
+ * pdf-parse's flattened text if positional extraction yields nothing (e.g. an
+ * unusual encoding); a scanned/image PDF has no text layer and needs OCR.
+ */
+async function extractLines(data: Uint8Array): Promise<string[]> {
+  try {
+    const doc = await getDocument({ data, isEvalSupported: false, verbosity: 0 }).promise;
+    const out: string[] = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+      const page = await doc.getPage(p);
+      const content = await page.getTextContent();
+      const items = (content.items as { str: string; transform: number[] }[])
+        .filter((it) => typeof it.str === 'string' && it.str.trim().length > 0)
+        .map((it) => ({ x: it.transform[4]!, y: it.transform[5]!, s: it.str }))
+        .sort((a, b) => b.y - a.y); // top → bottom
+
+      // Group fragments into rows by baseline proximity, then order each row L→R.
+      let row: { x: number; s: string }[] = [];
+      let rowY: number | null = null;
+      const flush = () => {
+        if (row.length === 0) return;
+        const text = row
+          .sort((a, b) => a.x - b.x)
+          .map((c) => c.s)
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        if (text) out.push(text);
+        row = [];
+      };
+      for (const it of items) {
+        if (rowY !== null && Math.abs(it.y - rowY) > 2.5) flush();
+        row.push({ x: it.x, s: it.s });
+        rowY = it.y;
+      }
+      flush();
+    }
+    if (out.length > 0) return out;
+  } catch {
+    /* fall back to flattened text */
+  }
+  try {
+    const result = await pdfParse(Buffer.from(data));
+    return (result.text ?? '')
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+  } catch {
+    return [];
+  }
+}
 
 interface BiomarkerLike {
   id: string;
@@ -106,9 +165,9 @@ function extractRange(
     // Cholesterol, Serum") — stop before borrowing its range. Units like
     // "mg/dL" are short single tokens and don't trip this.
     if (k > valueIdx && !/\d/.test(raw) && (raw.match(/[a-zA-Z]{3,}/g)?.length ?? 0) >= 2) break;
-    // Skip prose: real reference ranges are short. This avoids treating clinical
-    // notes ("Dyslipidemia management; target goals … < 55,70 …") as a range.
-    if (raw.length > 40) continue;
+    // Skip prose: real reference ranges aren't wordy. A reconstructed table row
+    // ("Lymphocytes 43 (20 - 40) …") has few words; a clinical note has many.
+    if ((raw.match(/[a-zA-Z]{4,}/g)?.length ?? 0) > 5) continue;
     // Skip "bad/intermediate" tier rows of a multi-tier reference (e.g. Vitamin D
     // "Deficiency <20", "Insufficiency 21-29") so we capture the normal tier
     // ("Sufficiency 30-100"), not a threshold that would misclassify a good value.
@@ -124,8 +183,9 @@ function extractRange(
     const lessThan = low.match(/less than\s*(\d+(?:\.\d+)?)/);
     if (lessThan) return { raw, low: null, high: Number(lessThan[1]) };
 
-    // A bounded "low - high" (drop any leading unit/label like "mg/dl" or "Normal:").
-    const dash = raw.replace(/^[^\d<>≤≥]*/, '').match(/^(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)/);
+    // A bounded "low - high" anywhere on the line (in same-row table layouts the
+    // value precedes the range, e.g. "Hemoglobin 14.3 g/dL (13.0 - 17.0)").
+    const dash = raw.match(/(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)/);
     if (dash) return { raw, low: Number(dash[1]), high: Number(dash[2]) };
 
     const lt = low.match(/[<≤]\s*(\d+(?:\.\d+)?)/);
@@ -147,18 +207,8 @@ export async function parseLabPdf(
   data: Buffer | Uint8Array,
   biomarkers: BiomarkerLike[],
 ): Promise<ParsedLabRow[]> {
-  let text: string;
-  try {
-    const result = await pdfParse(data as Buffer);
-    text = result.text ?? '';
-  } catch {
-    return [];
-  }
-
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
+  const lines = await extractLines(data instanceof Buffer ? new Uint8Array(data) : data);
+  if (lines.length === 0) return [];
 
   // Build candidate needles per biomarker.
   const candidates: Candidate[] = biomarkers.map((bm) => {
@@ -188,8 +238,12 @@ export async function parseLabPdf(
       // keep LDL/HDL from matching VLDL, non-HDL, or the cholesterol ratios.
       if (cand.bm.slug === 'ldl-cholesterol' && /vldl|ldl\s*\/\s*hdl/.test(nline)) continue;
       if (cand.bm.slug === 'hdl-cholesterol' && /non[-\s]?hdl|\/\s*hdl|hdl\s*\//.test(nline)) continue;
-      // The bare "cholesterol" alias must not match the HDL/LDL/VLDL/ratio lines.
-      if (cand.bm.slug === 'total-cholesterol' && /hdl|ldl|vldl|non[-\s]?hdl|\//.test(nline)) continue;
+      // 25-OH vitamin D is a different test from 1,25-OH (calcitriol).
+      if (cand.bm.slug === 'vitamin-d-25oh' && /1[.,]\s*25/.test(nline)) continue;
+      // The bare "cholesterol" alias must not match the HDL/LDL/VLDL/ratio lines
+      // (ratios like "T.Cholesterol / HDL" always contain hdl/ldl, so matching
+      // those names covers them — don't reject the "mg/dL" unit slash).
+      if (cand.bm.slug === 'total-cholesterol' && /hdl|ldl|vldl|non[-\s]?hdl/.test(nline)) continue;
 
       let matchedNeedle: string | null = null;
       for (const needle of cand.needles) {
@@ -240,18 +294,26 @@ export async function parseLabPdf(
     // that, an inline number on the name line itself.
     let value: number | null = null;
     let valueIdx = i;
-    for (let k = i + 1; k <= i + 8 && k < lines.length; k++) {
-      if (startsOtherMarker(k, pick.cand.bm.id)) break;
-      const v = pureNumberLine(lines[k]!);
-      if (v !== null) {
-        value = v;
-        valueIdx = k;
-        break;
-      }
-    }
+    // 1) Same-row layout: the value is the first number *after* the marker name
+    //    on this line ("Fasting Blood Glucose 97 mg/dl 70 - 109"). Reading after
+    //    the name avoids a number embedded in it ("25(OH)").
+    const after = nline.slice(nline.indexOf(pick.needle) + pick.needle.length);
+    value = extractNumber(after);
+    // 2) Stacked layout: the value is on a following row, as its leading token
+    //    ("183 mg/dL Desirable: < 200") or alone. Requiring it at the start
+    //    avoids grabbing a range bound, an ID, or a mid-row number from a note;
+    //    the scan stops at the next named marker.
     if (value === null) {
-      value = extractNumber(line);
-      valueIdx = i;
+      for (let k = i + 1; k <= i + 8 && k < lines.length; k++) {
+        if (startsOtherMarker(k, pick.cand.bm.id)) break;
+        const row = lines[k]!;
+        const m = row.match(/^[-+]?\d+(?:\.\d+)?$/) ?? row.match(/^([-+]?\d+(?:\.\d+)?)\s+\D/);
+        if (m) {
+          value = Number(m[1] ?? m[0]);
+          valueIdx = k;
+          break;
+        }
+      }
     }
     if (value === null) continue;
 
