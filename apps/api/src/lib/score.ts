@@ -9,6 +9,7 @@
 import {
   type HealthMarkerInput,
   type VitalScore,
+  applyLabRange,
   computeHealthAssessment,
 } from '@vital/shared';
 import { and, asc, desc, eq, inArray } from 'drizzle-orm';
@@ -43,15 +44,20 @@ export async function computeUserScore(userId: string): Promise<VitalScore> {
     .where(eq(biomarkers.isActive, true))
     .orderBy(asc(biomarkers.displayOrder));
 
-  // Latest result (value + tested date) per biomarker for this user.
+  // Latest result per biomarker for this user, with the lab's captured range.
   const ids = rows.map((r) => r.id);
-  const latest = new Map<string, { value: number; testedAt: string }>();
+  const latest = new Map<
+    string,
+    { value: number; testedAt: string; refLow: number | null; refHigh: number | null }
+  >();
   if (ids.length > 0) {
     const resultRows = await db
       .select({
         biomarkerId: userBiomarkerResults.biomarkerId,
         value: userBiomarkerResults.value,
         testedAt: userBiomarkerResults.testedAt,
+        refLow: userBiomarkerResults.refLow,
+        refHigh: userBiomarkerResults.refHigh,
       })
       .from(userBiomarkerResults)
       .where(
@@ -60,13 +66,30 @@ export async function computeUserScore(userId: string): Promise<VitalScore> {
       .orderBy(desc(userBiomarkerResults.testedAt), desc(userBiomarkerResults.createdAt));
     for (const r of resultRows) {
       if (!latest.has(r.biomarkerId)) {
-        latest.set(r.biomarkerId, { value: Number(r.value), testedAt: r.testedAt });
+        latest.set(r.biomarkerId, {
+          value: Number(r.value),
+          testedAt: r.testedAt,
+          refLow: r.refLow != null ? Number(r.refLow) : null,
+          refHigh: r.refHigh != null ? Number(r.refHigh) : null,
+        });
       }
     }
   }
 
   const markers: HealthMarkerInput[] = rows.map((r) => {
     const result = latest.get(r.id);
+    // Score against the patient's own lab range (age/sex-specific) when present.
+    const ranges = applyLabRange(
+      {
+        optimal_low: Number(r.optimalLow),
+        optimal_high: Number(r.optimalHigh),
+        normal_low: Number(r.normalLow),
+        normal_high: Number(r.normalHigh),
+        min_plausible: Number(r.minPlausible),
+        max_plausible: Number(r.maxPlausible),
+      },
+      { ref_low: result?.refLow ?? null, ref_high: result?.refHigh ?? null },
+    );
     return {
       slug: r.slug,
       name: r.name,
@@ -74,12 +97,7 @@ export async function computeUserScore(userId: string): Promise<VitalScore> {
       categoryName: r.categoryName,
       value: result ? result.value : null,
       tested_at: result?.testedAt ?? null,
-      optimal_low: Number(r.optimalLow),
-      optimal_high: Number(r.optimalHigh),
-      normal_low: Number(r.normalLow),
-      normal_high: Number(r.normalHigh),
-      min_plausible: Number(r.minPlausible),
-      max_plausible: Number(r.maxPlausible),
+      ...ranges,
     };
   });
 

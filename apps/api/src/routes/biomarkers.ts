@@ -6,6 +6,7 @@
 import {
   type BiomarkerStatus,
   type BiomarkerWithResult,
+  applyLabRange,
   biomarkerQuerySchema,
   classifyBiomarkerSafe,
 } from '@vital/shared';
@@ -100,7 +101,12 @@ biomarkerRoutes.get('/biomarkers', validate('query', biomarkerQuerySchema), asyn
   const result: BiomarkerWithResult[] = page.map((row) => {
     const bm = serializeBiomarker(row);
     const latestResult = latest.get(row.id) ?? null;
-    const status: BiomarkerStatus = classifyBiomarkerSafe(latestResult?.value, bm);
+    // Classify against the patient's own lab range (age/sex-specific) when present.
+    const ranges = applyLabRange(bm, {
+      ref_low: latestResult?.ref_low ?? null,
+      ref_high: latestResult?.ref_high ?? null,
+    });
+    const status: BiomarkerStatus = classifyBiomarkerSafe(latestResult?.value, ranges);
     return { ...bm, latest_result: latestResult, status };
   });
 
@@ -128,11 +134,15 @@ biomarkerRoutes.get('/biomarkers/:id', async (c) => {
   const bm = serializeBiomarker(row);
   const latestResult = latest.get(row.id) ?? null;
 
+  const ranges = applyLabRange(bm, {
+    ref_low: latestResult?.ref_low ?? null,
+    ref_high: latestResult?.ref_high ?? null,
+  });
   const payload: BiomarkerWithResult = {
     ...bm,
     category: catRow ? serializeCategory(catRow) : undefined,
     latest_result: latestResult,
-    status: classifyBiomarkerSafe(latestResult?.value, bm),
+    status: classifyBiomarkerSafe(latestResult?.value, ranges),
   };
 
   return c.json({ biomarker: payload });
