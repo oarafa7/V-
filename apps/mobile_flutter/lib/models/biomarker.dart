@@ -13,6 +13,7 @@ class Biomarker {
   final String whyItMatters;
   final String whatAffectsIt;
   final double optimalLow, optimalHigh, normalLow, normalHigh;
+  final double minPlausible, maxPlausible;
   final double? value;
   final String? testedAt;
   final BiomarkerStatus status;
@@ -28,6 +29,8 @@ class Biomarker {
     required this.optimalHigh,
     required this.normalLow,
     required this.normalHigh,
+    required this.minPlausible,
+    required this.maxPlausible,
     required this.value,
     required this.testedAt,
     required this.status,
@@ -48,6 +51,9 @@ class Biomarker {
       optimalHigh: _num(j['optimal_high']),
       normalLow: _num(j['normal_low']),
       normalHigh: _num(j['normal_high']),
+      // Fall back to the normal range when plausible bounds aren't present.
+      minPlausible: j['min_plausible'] == null ? _num(j['normal_low']) : _num(j['min_plausible']),
+      maxPlausible: j['max_plausible'] == null ? _num(j['normal_high']) : _num(j['max_plausible']),
       value: res?['value'] == null ? null : _num(res!['value']),
       testedAt: res?['tested_at'] as String?,
       status: BiomarkerStatus.parse(j['status'] as String?),

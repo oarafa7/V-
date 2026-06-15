@@ -1,4 +1,6 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
@@ -6,6 +8,8 @@ import '../../models/biomarker.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/range_bar.dart';
 import '../../widgets/range_reference_chart.dart';
+import '../biomarkers/biomarkers_provider.dart';
+import '../booking/booking_screen.dart';
 
 final resultHistoryProvider =
     FutureProvider.family<List<ResultPoint>, String>((ref, id) => ref.read(apiProvider).resultHistory(id));
@@ -74,7 +78,9 @@ class BiomarkerDetailScreen extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  onPressed: () => _soon(context),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const BookingScreen()),
+                  ),
                   child: const Text('Book a Test'),
                 ),
               ),
@@ -87,7 +93,7 @@ class BiomarkerDetailScreen extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  onPressed: () => _soon(context),
+                  onPressed: () => _openAddResult(context, ref),
                   child: const Text('Add Result'),
                 ),
               ),
@@ -113,8 +119,237 @@ class BiomarkerDetailScreen extends ConsumerWidget {
     );
   }
 
-  void _soon(BuildContext context) =>
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Coming soon in the Flutter port')));
+  /// Open the manual result-entry sheet; on save, refresh the chart + lists.
+  Future<void> _openAddResult(BuildContext context, WidgetRef ref) async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: T.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _AddResultSheet(marker: marker),
+    );
+    if (saved == true) {
+      ref.invalidate(resultHistoryProvider(marker.id));
+      ref.invalidate(biomarkersProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Result saved', style: bodyText(13, color: T.canvas))),
+        );
+      }
+    }
+  }
 
   static String _fmt(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
+}
+
+String _fmtNum(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
+
+/// Bottom-sheet form for manually logging a biomarker result. Validates the
+/// value against the marker's plausible window, then POSTs to /results.
+class _AddResultSheet extends ConsumerStatefulWidget {
+  final Biomarker marker;
+  const _AddResultSheet({required this.marker});
+
+  @override
+  ConsumerState<_AddResultSheet> createState() => _AddResultSheetState();
+}
+
+class _AddResultSheetState extends ConsumerState<_AddResultSheet> {
+  final _value = TextEditingController();
+  final _lab = TextEditingController();
+  final _notes = TextEditingController();
+  DateTime _date = DateTime.now();
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _value.dispose();
+    _lab.dispose();
+    _notes.dispose();
+    super.dispose();
+  }
+
+  String _fmtDate(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-'
+      '${d.month.toString().padLeft(2, '0')}-'
+      '${d.day.toString().padLeft(2, '0')}';
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date,
+      firstDate: DateTime(now.year - 10),
+      lastDate: now,
+      helpText: 'Test date',
+    );
+    if (picked != null) setState(() => _date = picked);
+  }
+
+  Future<void> _submit() async {
+    final m = widget.marker;
+    final numeric = double.tryParse(_value.text.trim());
+    if (numeric == null) {
+      setState(() => _error = 'Enter a numeric value');
+      return;
+    }
+    if (numeric < m.minPlausible || numeric > m.maxPlausible) {
+      setState(() => _error =
+          'Value must be between ${_fmtNum(m.minPlausible)} and ${_fmtNum(m.maxPlausible)} ${m.unit}');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(apiProvider).dio.post('/results', data: {
+        'biomarker_id': m.id,
+        'value': numeric,
+        'tested_at': _fmtDate(_date),
+        if (_lab.text.trim().isNotEmpty) 'lab_name': _lab.text.trim(),
+        if (_notes.text.trim().isNotEmpty) 'notes': _notes.text.trim(),
+      });
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      final msg = (data is Map && data['error'] is Map)
+          ? (data['error']['message']?.toString() ?? 'Could not save result')
+          : 'Network error — check your connection.';
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = msg;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final m = widget.marker;
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(color: T.line, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            Text('Add ${m.name} result', style: display(20, color: T.ink)),
+            const SizedBox(height: 4),
+            Text('Optimal ${_fmtNum(m.optimalLow)}–${_fmtNum(m.optimalHigh)} ${m.unit}',
+                style: bodyText(13, color: T.inkSoft)),
+            const SizedBox(height: 20),
+            _label('Value (${m.unit})'),
+            const SizedBox(height: 8),
+            _field(
+              _value,
+              hint: '—',
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+            ),
+            const SizedBox(height: 16),
+            _label('Test date'),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: _busy ? null : _pickDate,
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                decoration: BoxDecoration(
+                  color: T.panel,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: T.line),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.calendar_today_outlined, size: 18, color: T.inkMuted),
+                    const SizedBox(width: 10),
+                    Text(_fmtDate(_date), style: bodyText(15, color: T.ink)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _label('Lab name (optional)'),
+            const SizedBox(height: 8),
+            _field(_lab, hint: 'Cairo Labs'),
+            const SizedBox(height: 16),
+            _label('Notes (optional)'),
+            const SizedBox(height: 8),
+            _field(_notes, hint: 'Anything worth noting', maxLines: 3),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: bodyText(13, color: T.rust)),
+            ],
+            const SizedBox(height: 24),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: T.ink,
+                foregroundColor: T.canvas,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: _busy ? null : _submit,
+              child: Text(_busy ? 'Saving…' : 'Save result',
+                  style: bodyText(15, weight: FontWeight.w600, color: T.canvas)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _label(String text) => Text(
+        text.toUpperCase(),
+        style: bodyText(11, weight: FontWeight.w600, color: T.inkMuted).copyWith(letterSpacing: 1.2),
+      );
+
+  Widget _field(
+    TextEditingController c, {
+    required String hint,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+    int maxLines = 1,
+  }) {
+    return TextField(
+      controller: c,
+      enabled: !_busy,
+      keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
+      maxLines: maxLines,
+      style: bodyText(15, color: T.ink),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: T.panel,
+        hintText: hint,
+        hintStyle: bodyText(15, color: T.inkMuted),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: T.line),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: T.accent, width: 1.5),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: T.line),
+        ),
+      ),
+    );
+  }
 }
