@@ -1777,7 +1777,7 @@ export const BIOMARKER_SEED: BiomarkerSeed[] = [
     normal_low: 0,
     normal_high: 2,
     min_plausible: 0,
-    max_plausible: 20,
+    max_plausible: 5,
     display_order: 13,
     tags: ['basophils', 'allergy', 'blood', 'histamine', 'cbc'],
   },

@@ -136,8 +136,10 @@ export async function parseLabPdf(
     // never assigned to several markers.
     let pick: { cand: Candidate; needle: string; full: boolean } | null = null;
     for (const cand of candidates) {
-      // Negative context: don't let generic haemoglobin match an "A1c" line.
-      if (cand.bm.slug === 'hemoglobin' && /\ba1c\b/.test(nline)) continue;
+      // Negative context: don't let generic haemoglobin match an HbA1c line.
+      // "glycohemoglobin (hba1c)" has no word boundary before "a1c", so match
+      // the a1c/glyco substrings directly rather than a bounded \ba1c\b.
+      if (cand.bm.slug === 'hemoglobin' && /a1c|glyco/.test(nline)) continue;
 
       let matchedNeedle: string | null = null;
       for (const needle of cand.needles) {
