@@ -27,7 +27,7 @@ class DashboardScreen extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         children: [
-          const VitalLogo(horizontal: true, size: 150),
+          const Center(child: VitalLogo(size: 92)),
           const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,

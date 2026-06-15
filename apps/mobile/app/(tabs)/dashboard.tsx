@@ -61,7 +61,7 @@ export default function Dashboard() {
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-3 px-5">
-          <VitalLogo variant="horizontal" size={150} />
+          <VitalLogo size={92} />
         </View>
 
         <View className="flex-row items-start justify-between px-5">
