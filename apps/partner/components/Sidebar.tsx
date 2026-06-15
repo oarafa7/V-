@@ -17,8 +17,9 @@ export function Sidebar() {
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-line bg-panel/60 p-4">
       <div className="px-2 py-3">
-        <div className="font-display text-2xl font-extrabold tracking-tight text-ink">VITAL</div>
-        <div className="text-xs text-inkSoft">Lab Partner</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/vital-logo.png" alt="VITAL" width={104} height={124} className="h-auto w-[104px]" />
+        <div className="mt-1 text-xs text-inkSoft">Lab Partner</div>
       </div>
       <nav className="mt-4 flex-1 space-y-1">
         {NAV.map((item) => (

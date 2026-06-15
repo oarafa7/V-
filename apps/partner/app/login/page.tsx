@@ -36,8 +36,9 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-sm p-8">
         <div className="mb-6 text-center">
-          <div className="font-display text-3xl font-extrabold tracking-tight text-ink">VITAL</div>
-          <div className="mt-1 text-sm text-inkSoft">Lab partner portal</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/vital-logo.png" alt="VITAL" width={132} height={157} className="mx-auto h-auto w-[132px]" />
+          <div className="mt-2 text-sm text-inkSoft">Lab partner portal</div>
         </div>
         <form onSubmit={submit} className="space-y-4">
           <Field label="Email">
