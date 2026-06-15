@@ -3,6 +3,7 @@
  * with the stored Bearer token. Throws ApiError with the backend's error envelope.
  */
 import type {
+  AppNotification,
   ConfirmLabUploadInput,
   LabUpload,
   NotificationTemplate,
@@ -128,5 +129,14 @@ export const api = {
     request<{ success: boolean }>(`/lab-partner/users/${userId}/notify`, {
       method: 'POST',
       body: { template_id: templateId },
+    }),
+
+  // partner's own alert feed (booking added / rescheduled / cancelled)
+  notifications: () =>
+    request<{ notifications: AppNotification[]; unread_count: number }>('/lab-partner/notifications'),
+  markNotificationsRead: (ids?: string[]) =>
+    request<{ success: boolean }>('/lab-partner/notifications/read', {
+      method: 'POST',
+      body: { ids },
     }),
 };

@@ -12,9 +12,10 @@ import { and, asc, desc, eq, inArray } from 'drizzle-orm';
 import { Hono } from 'hono';
 
 import { db } from '../db/client.js';
-import { bookings, serviceAreas } from '../db/schema.js';
+import { bookings, serviceAreas, users } from '../db/schema.js';
 import { cancelBooking, createBooking, rescheduleBooking, resolveRange } from '../lib/booking.js';
 import { errorResponse } from '../lib/http.js';
+import { partnerIdsForArea } from '../lib/lab-partner.js';
 import { notifyUser } from '../lib/notifications.js';
 import { serializeArea, serializeBooking } from '../lib/serialize.js';
 import { type AuthVariables, requireAuth } from '../middleware/auth.js';
@@ -24,6 +25,23 @@ import { validate } from '../middleware/validate.js';
 export const bookingRoutes = new Hono<{ Variables: AuthVariables }>();
 
 bookingRoutes.use('*', requireAuth, requireActiveSubscription);
+
+/** Fan a visit alert out to every partner (doctor) assigned to a booking's area. */
+async function notifyAreaPartners(
+  areaId: string,
+  n: { title: string; body: string; link: string; dedupeKey: string },
+) {
+  const partnerIds = await partnerIdsForArea(areaId);
+  await Promise.all(
+    partnerIds.map((pid) => notifyUser(pid, { type: 'booking', severity: 'info', ...n })),
+  );
+}
+
+/** Patient's display name for partner-facing alert copy. */
+async function patientName(userId: string): Promise<string> {
+  const [row] = await db.select({ name: users.fullName }).from(users).where(eq(users.id, userId)).limit(1);
+  return row?.name ?? 'A patient';
+}
 
 bookingRoutes.get('/areas', async (c) => {
   const rows = await db
@@ -72,6 +90,14 @@ bookingRoutes.post('/bookings', validate('json', createBookingSchema), async (c)
     dedupeKey: `booking-confirmed:${booking.id}`,
   });
 
+  // Alert the visiting doctor(s) for that area of the new visit.
+  await notifyAreaPartners(booking.areaId, {
+    title: 'New booking',
+    body: `${await patientName(userId)} booked a home test for ${booking.date}, ${booking.startTime}–${booking.endTime} (${areaName}).`,
+    link: `appointments/${userId}`,
+    dedupeKey: `partner-booking-new:${booking.id}`,
+  });
+
   return c.json({ booking: serializeBooking(booking, areaName) }, 201);
 });
 
@@ -91,6 +117,14 @@ bookingRoutes.put('/bookings/:id', validate('json', createBookingSchema), async 
     dedupeKey: `booking-updated:${booking.id}:${booking.date}:${booking.startTime}`,
   });
 
+  // Alert the visiting doctor(s) for the new area that the visit moved.
+  await notifyAreaPartners(booking.areaId, {
+    title: 'Booking rescheduled',
+    body: `${await patientName(userId)} moved their home test to ${booking.date}, ${booking.startTime}–${booking.endTime} (${areaName}).`,
+    link: `appointments/${userId}`,
+    dedupeKey: `partner-booking-resched:${booking.id}:${booking.date}:${booking.startTime}`,
+  });
+
   return c.json({ booking: serializeBooking(booking, areaName) });
 });
 
@@ -106,6 +140,14 @@ bookingRoutes.post('/bookings/:id/cancel', async (c) => {
     body: `Your test booking on ${booking.date} at ${booking.startTime} was cancelled.`,
     link: 'booking',
     dedupeKey: `booking-cancelled:${booking.id}`,
+  });
+
+  // Alert the visiting doctor(s) for that area that the visit is off.
+  await notifyAreaPartners(booking.areaId, {
+    title: 'Booking cancelled',
+    body: `${await patientName(userId)} cancelled their home test on ${booking.date} at ${booking.startTime}.`,
+    link: `appointments/${userId}`,
+    dedupeKey: `partner-booking-cancel:${booking.id}`,
   });
 
   return c.json({ success: true });

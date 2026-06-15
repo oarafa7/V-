@@ -6,10 +6,11 @@
  */
 import {
   confirmLabUploadSchema,
+  markReadSchema,
   type PartnerAppointment,
   sendVisitNotificationSchema,
 } from '@vital/shared';
-import { and, asc, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 
 import { db } from '../db/client.js';
@@ -19,6 +20,7 @@ import {
   labPartnerAreas,
   labUploads,
   notificationTemplates,
+  notifications,
   serviceAreas,
   userBiomarkerResults,
   users,
@@ -31,6 +33,7 @@ import {
   serializeArea,
   serializeBooking,
   serializeLabUpload,
+  serializeNotification,
   serializeNotificationTemplate,
   serializePartnerUserSummary,
   serializeResult,
@@ -234,5 +237,33 @@ labPartnerRoutes.post('/users/:userId/notify', validate('json', sendVisitNotific
     // Unique per send so the same message can be pushed more than once.
     dedupeKey: `visit:${template_id}:${Date.now()}`,
   });
+  return c.json({ success: true });
+});
+
+/** The partner's own alert feed (new / rescheduled / cancelled bookings). */
+labPartnerRoutes.get('/notifications', async (c) => {
+  const partner = c.get('user');
+  const rows = await db
+    .select()
+    .from(notifications)
+    .where(eq(notifications.userId, partner.id))
+    .orderBy(desc(notifications.createdAt))
+    .limit(50);
+  const [{ n } = { n: 0 }] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(notifications)
+    .where(and(eq(notifications.userId, partner.id), isNull(notifications.readAt)));
+  return c.json({ notifications: rows.map(serializeNotification), unread_count: n });
+});
+
+/** Mark partner alerts read (all, or the given ids). */
+labPartnerRoutes.post('/notifications/read', validate('json', markReadSchema), async (c) => {
+  const partner = c.get('user');
+  const { ids } = c.req.valid('json');
+  const where =
+    ids && ids.length
+      ? and(eq(notifications.userId, partner.id), inArray(notifications.id, ids))
+      : and(eq(notifications.userId, partner.id), isNull(notifications.readAt));
+  await db.update(notifications).set({ readAt: new Date() }).where(where);
   return c.json({ success: true });
 });

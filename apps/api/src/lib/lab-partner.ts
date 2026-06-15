@@ -23,6 +23,15 @@ export async function partnerAreaIds(partnerId: string): Promise<string[]> {
   return rows.map((r) => r.areaId);
 }
 
+/** Partner (user) ids assigned to a service area — recipients of visit alerts. */
+export async function partnerIdsForArea(areaId: string): Promise<string[]> {
+  const rows = await db
+    .select({ partnerId: labPartnerAreas.partnerId })
+    .from(labPartnerAreas)
+    .where(eq(labPartnerAreas.areaId, areaId));
+  return rows.map((r) => r.partnerId);
+}
+
 /**
  * A partner may view a user only if that user has at least one booking in one of
  * the partner's assigned areas.
