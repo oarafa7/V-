@@ -5,6 +5,8 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
+
+import { VitalLogo } from '@/components/Logo';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -65,9 +67,7 @@ export default function Welcome() {
       />
 
       <View className="flex-1 items-center justify-center px-8">
-        <Text className="font-display tracking-widest" style={{ color: colors.gold, fontSize: 64 }}>
-          VITAL
-        </Text>
+        <VitalLogo size={200} />
         <Text
           className="mt-4 text-center font-body"
           style={{ color: colors.text, fontSize: 18, lineHeight: 26 }}

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { VitalLogo } from '@/components/Logo';
 import { CategoryCard, EmptyState, LucideIcon, SectionHeader } from '@/components/ui';
 import { colors, statusColors } from '@/constants/theme';
 import { aiApi, notificationApi } from '@/lib/api';
@@ -59,6 +60,10 @@ export default function Dashboard() {
         contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
       >
+        <View className="mb-3 px-5">
+          <VitalLogo variant="horizontal" size={150} />
+        </View>
+
         <View className="flex-row items-start justify-between px-5">
           <View>
             <Text className="font-mono uppercase tracking-widest" style={{ color: colors.gold, fontSize: 12 }}>

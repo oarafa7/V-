@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../auth/login_screen.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/vital_logo.dart';
 import 'signup_screen.dart';
 
 /// First screen for signed-out users — brand splash with entry points into
@@ -20,9 +21,7 @@ class WelcomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(flex: 3),
-              Text('VITAL',
-                  textAlign: TextAlign.center,
-                  style: display(58, weight: FontWeight.w800, color: T.ink, spacing: -1)),
+              const Center(child: VitalLogo(size: 220)),
               const SizedBox(height: 16),
               Text('Know your body.\nBefore it fails you.',
                   textAlign: TextAlign.center, style: bodyText(16, color: T.inkSoft, height: 1.5)),

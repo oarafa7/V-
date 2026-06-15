@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/auth.dart';
 import '../../models/biomarker.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/vital_logo.dart';
 import '../biomarkers/biomarkers_provider.dart';
 import '../booking/booking_screen.dart';
 import '../category/category_detail_screen.dart';
@@ -26,6 +27,8 @@ class DashboardScreen extends ConsumerWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
         children: [
+          const VitalLogo(horizontal: true, size: 150),
+          const SizedBox(height: 12),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
