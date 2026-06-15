@@ -80,6 +80,45 @@ function pureNumberLine(line: string): number | null {
   return /^[-+]?\d+(?:\.\d+)?$/.test(line.trim()) ? Number(line.trim()) : null;
 }
 
+interface RefRange {
+  raw: string;
+  low: number | null;
+  high: number | null;
+}
+
+/**
+ * Find the reference range printed for a result by scanning the few lines after
+ * its value. Labs print these glued to the unit ("U/L40 - 129"), as bounds
+ * ("Up to 0.90", "< 5", "> 55"), or on their own line ("60 - 160",
+ * "Normal: 4.5 - 5.7"). Returns the first recognisable range, raw + parsed.
+ */
+function extractRange(lines: string[], valueIdx: number): RefRange | null {
+  for (let k = valueIdx; k <= valueIdx + 3 && k < lines.length; k++) {
+    const raw = lines[k]!.trim();
+    const low = raw.toLowerCase();
+
+    const upTo = low.match(/up\s*to\s*:?\s*(\d+(?:\.\d+)?)/);
+    if (upTo) return { raw, low: null, high: Number(upTo[1]) };
+
+    // Worded directional bounds, e.g. HDL "No risk: More than 55".
+    const moreThan = low.match(/more than\s*(\d+(?:\.\d+)?)/);
+    if (moreThan) return { raw, low: Number(moreThan[1]), high: null };
+    const lessThan = low.match(/less than\s*(\d+(?:\.\d+)?)/);
+    if (lessThan) return { raw, low: null, high: Number(lessThan[1]) };
+
+    // A bounded "low - high" (drop any leading unit/label like "mg/dl" or "Normal:").
+    const dash = raw.replace(/^[^\d<>≤≥]*/, '').match(/^(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)/);
+    if (dash) return { raw, low: Number(dash[1]), high: Number(dash[2]) };
+
+    const lt = low.match(/[<≤]\s*(\d+(?:\.\d+)?)/);
+    if (lt) return { raw, low: null, high: Number(lt[1]) };
+
+    const gt = low.match(/[>≥]\s*(\d+(?:\.\d+)?)/);
+    if (gt) return { raw, low: Number(gt[1]), high: null };
+  }
+  return null;
+}
+
 interface Candidate {
   bm: BiomarkerLike;
   needles: string[];
@@ -125,9 +164,11 @@ export async function parseLabPdf(
     // Value: on this line, or — for "name / value / unit" layouts — the next
     // line if it is a standalone number.
     let value = extractNumber(line);
+    let valueIdx = i;
     if (value === null) {
       const next = i + 1 < lines.length ? pureNumberLine(lines[i + 1]!) : null;
       value = next;
+      valueIdx = i + 1;
     }
     if (value === null) continue;
 
@@ -172,6 +213,7 @@ export async function parseLabPdf(
 
     const existing = best.get(cand.bm.id);
     if (!existing || confidence > existing.confidence) {
+      const range = extractRange(lines, valueIdx);
       best.set(cand.bm.id, {
         biomarkerId: cand.bm.id,
         biomarkerName: cand.bm.name,
@@ -180,6 +222,9 @@ export async function parseLabPdf(
         unit: cand.bm.unit,
         confidence,
         include: confidence >= 0.6 && inRange,
+        referenceRange: range?.raw ?? null,
+        refLow: range?.low ?? null,
+        refHigh: range?.high ?? null,
       });
     }
   }

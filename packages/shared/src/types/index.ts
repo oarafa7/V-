@@ -242,6 +242,10 @@ export interface ParsedLabRow {
   unit: string | null;
   confidence: number; // 0..1
   include: boolean;
+  // The lab's reference range as printed on the PDF (patient-specific), if found.
+  reference_range?: string | null; // raw text, e.g. "40 - 129", "Up to 0.90"
+  ref_low?: number | null;
+  ref_high?: number | null;
 }
 
 export interface LabUpload {

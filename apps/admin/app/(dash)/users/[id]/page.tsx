@@ -573,7 +573,10 @@ function ReviewModal({
                       ))}
                     </select>
                     {r.biomarker_name && r.biomarker_name !== 'Manual entry' ? (
-                      <div className="mt-0.5 text-xs text-inkMuted">from PDF: {r.biomarker_name}</div>
+                      <div className="mt-0.5 text-xs text-inkMuted">
+                        from PDF: {r.biomarker_name}
+                        {r.reference_range ? <span className="ml-2">· lab range: {r.reference_range}</span> : null}
+                      </div>
                     ) : null}
                   </td>
                   <td className="px-3 py-2">

@@ -485,6 +485,9 @@ function UploadTab({
                     </Select>
                     <div className="mt-0.5 text-xs text-inkMuted">
                       from PDF: <span className="font-medium">{r.biomarker_name}</span>
+                      {r.reference_range ? (
+                        <span className="ml-2 text-inkMuted">· lab range: {r.reference_range}</span>
+                      ) : null}
                     </div>
                   </div>
                   <Input

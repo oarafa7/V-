@@ -182,6 +182,10 @@ export interface ParsedLabRow {
   unit: string | null;
   confidence: number; // 0..1
   include: boolean;
+  // Reference range as printed on the PDF (the lab's range for this patient).
+  referenceRange?: string | null; // raw text, e.g. "40 - 129", "Up to 0.90"
+  refLow?: number | null;
+  refHigh?: number | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
