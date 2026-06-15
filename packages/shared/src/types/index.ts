@@ -226,6 +226,10 @@ export interface UserBiomarkerResult {
   notes: string | null;
   source: ResultSource;
   lab_upload_id: UUID | null;
+  // The lab's printed reference range for this result (provenance), when known.
+  reference_range: string | null;
+  ref_low: number | null;
+  ref_high: number | null;
   created_at: ISODateTimeString;
 }
 

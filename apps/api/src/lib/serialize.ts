@@ -173,6 +173,9 @@ export function serializeResult(row: UserBiomarkerResultRow): UserBiomarkerResul
     notes: row.notes,
     source: (row.source as UserBiomarkerResult['source']) ?? 'manual',
     lab_upload_id: row.labUploadId ?? null,
+    reference_range: row.referenceRange ?? null,
+    ref_low: row.refLow != null ? num(row.refLow) : null,
+    ref_high: row.refHigh != null ? num(row.refHigh) : null,
     created_at: iso(row.createdAt),
   };
 }

@@ -23,6 +23,14 @@ class BiomarkerDetailScreen extends ConsumerWidget {
     final m = marker;
     final color = T.statusColor(m.status);
     final history = ref.watch(resultHistoryProvider(m.id)).valueOrNull ?? const [];
+    // Most recent imported result that carried the lab's printed reference range.
+    String? labRange;
+    for (final h in history) {
+      if (h.referenceRange != null) {
+        labRange = h.referenceRange;
+        break;
+      }
+    }
 
     return Scaffold(
       appBar: AppBar(backgroundColor: T.canvas, elevation: 0, foregroundColor: T.ink),
@@ -45,6 +53,10 @@ class BiomarkerDetailScreen extends ConsumerWidget {
               ],
             ],
           ),
+          if (labRange != null) ...[
+            const SizedBox(height: 6),
+            Text('Lab range $labRange', style: bodyText(12, color: T.inkMuted)),
+          ],
           if (m.description.isNotEmpty) ...[
             const SizedBox(height: 14),
             Text(m.description, style: bodyText(15, color: T.inkSoft, height: 1.55)),

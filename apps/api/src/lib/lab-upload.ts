@@ -98,18 +98,31 @@ export async function confirmUpload(
   for (const r of included) byBiomarker.set(r.biomarker_id, r);
   const finalRows = [...byBiomarker.values()];
 
+  // The lab's printed reference range per biomarker, captured at parse time.
+  const rangeByBiomarker = new Map(
+    (upload.parsed ?? [])
+      .filter((p) => p.biomarkerId)
+      .map((p) => [p.biomarkerId as string, p]),
+  );
+
   const inserted = await db
     .insert(userBiomarkerResults)
     .values(
-      finalRows.map((r) => ({
-        userId: upload.userId,
-        biomarkerId: r.biomarker_id,
-        value: String(r.value),
-        testedAt: tested_at,
-        labName: lab_name ?? upload.labName ?? null,
-        source: 'lab_upload' as const,
-        labUploadId: upload.id,
-      })),
+      finalRows.map((r) => {
+        const parsed = rangeByBiomarker.get(r.biomarker_id);
+        return {
+          userId: upload.userId,
+          biomarkerId: r.biomarker_id,
+          value: String(r.value),
+          testedAt: tested_at,
+          labName: lab_name ?? upload.labName ?? null,
+          source: 'lab_upload' as const,
+          labUploadId: upload.id,
+          referenceRange: parsed?.referenceRange ?? null,
+          refLow: parsed?.refLow != null ? String(parsed.refLow) : null,
+          refHigh: parsed?.refHigh != null ? String(parsed.refHigh) : null,
+        };
+      }),
     )
     .returning({ id: userBiomarkerResults.id });
 

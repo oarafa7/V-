@@ -65,9 +65,13 @@ class Biomarker {
 class ResultPoint {
   final double value;
   final String testedAt;
-  ResultPoint(this.value, this.testedAt);
-  factory ResultPoint.fromJson(Map<String, dynamic> j) =>
-      ResultPoint(_num(j['value']), j['tested_at'] as String);
+  final String? referenceRange; // the lab's printed range, when known
+  ResultPoint(this.value, this.testedAt, {this.referenceRange});
+  factory ResultPoint.fromJson(Map<String, dynamic> j) => ResultPoint(
+        _num(j['value']),
+        j['tested_at'] as String,
+        referenceRange: j['reference_range'] as String?,
+      );
 }
 
 /// Per-status counts for the dial + breakdown cards.

@@ -148,6 +148,10 @@ export const userBiomarkerResults = pgTable('user_biomarker_results', {
   source: text('source').notNull().default('manual'),
   // When source = 'lab_upload', links back to the originating upload.
   labUploadId: uuid('lab_upload_id'),
+  // The lab's printed reference range for this result (provenance), when known.
+  referenceRange: text('reference_range'),
+  refLow: decimal('ref_low', { precision: 12, scale: 4 }),
+  refHigh: decimal('ref_high', { precision: 12, scale: 4 }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

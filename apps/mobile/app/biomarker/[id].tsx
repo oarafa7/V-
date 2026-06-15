@@ -108,6 +108,8 @@ export default function BiomarkerDetail() {
   }
 
   const result = biomarker.latest_result;
+  // Most recent imported result that carried the lab's printed reference range.
+  const labRange = history.find((h) => h.reference_range)?.reference_range ?? null;
   const accent = biomarker.category?.color ?? colors.gold;
   const related = allBiomarkers
     .filter((b) => b.category?.slug === biomarker.category?.slug && b.id !== biomarker.id)
@@ -155,6 +157,11 @@ export default function BiomarkerDetail() {
               {result ? (
                 <Text className="mt-1 font-mono" style={{ color: colors.textMuted, fontSize: 11 }}>
                   Last tested {formatDate(result.tested_at)}
+                </Text>
+              ) : null}
+              {labRange ? (
+                <Text className="mt-0.5 font-mono" style={{ color: colors.textMuted, fontSize: 11 }}>
+                  Lab range {labRange}
                 </Text>
               ) : null}
             </View>
