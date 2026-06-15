@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useMemo, useState } from 'react';
 
+import { AlertsBell } from '@/components/AlertsBell';
 import { useToast } from '@/components/toast';
 import {
   Button,
@@ -90,9 +91,12 @@ function AppointmentDetail() {
 
   return (
     <div>
-      <Link href="/" className="mb-4 inline-flex items-center gap-1 text-sm text-accent hover:underline">
-        ← Appointments
-      </Link>
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <Link href="/" className="inline-flex items-center gap-1 text-sm text-accent hover:underline">
+          ← Appointments
+        </Link>
+        <AlertsBell />
+      </div>
 
       <div className="mb-5 flex flex-wrap items-end gap-4">
         <h1 className="font-display text-3xl font-bold text-ink">{user.full_name}</h1>
