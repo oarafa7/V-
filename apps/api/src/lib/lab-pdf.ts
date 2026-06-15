@@ -95,6 +95,9 @@ interface RefRange {
 function extractRange(lines: string[], valueIdx: number): RefRange | null {
   for (let k = valueIdx; k <= valueIdx + 3 && k < lines.length; k++) {
     const raw = lines[k]!.trim();
+    // Skip prose: real reference ranges are short. This avoids treating clinical
+    // notes ("Dyslipidemia management; target goals … < 55,70 …") as a range.
+    if (raw.length > 40) continue;
     const low = raw.toLowerCase();
 
     const upTo = low.match(/up\s*to\s*:?\s*(\d+(?:\.\d+)?)/);
