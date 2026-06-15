@@ -7,6 +7,7 @@ import { create } from 'zustand';
 
 import { authApi, userApi } from '../api';
 import { clearSession, getAccessToken, setSession } from '../auth';
+import { registerForPushNotifications, resetPushRegistration } from '../push';
 import { useScoreStore } from './score';
 
 interface AuthState {
@@ -35,6 +36,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const { user } = await userApi.me();
       set({ user, status: 'authenticated' });
+      void registerForPushNotifications();
     } catch {
       await clearSession();
       set({ status: 'unauthenticated', user: null });
@@ -58,11 +60,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       const me = await userApi.me();
       set({ user: me.user, status: 'authenticated' });
     }
+    void registerForPushNotifications();
   },
 
   signOut: async () => {
     await authApi.logout().catch(() => undefined);
     await clearSession();
+    resetPushRegistration();
     useScoreStore.getState().clear();
     set({ user: null, status: 'unauthenticated' });
   },
