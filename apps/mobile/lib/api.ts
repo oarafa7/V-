@@ -4,6 +4,8 @@
  * surface of typed endpoint helpers.
  */
 import type {
+  AddonMarker,
+  AddonOrder,
   AiChatMessage,
   AiInsight,
   AiStatus,
@@ -205,6 +207,22 @@ export const notificationApi = {
     request<{ success: boolean }>('/notifications/me/read', { method: 'POST', body: { ids } }),
   registerDevice: (token: string, platform: 'ios' | 'android' | 'web') =>
     request<{ success: boolean }>('/devices', { method: 'POST', body: { token, platform } }),
+};
+
+// ── Add-ons (extra paid markers at booking checkout) ───────────────────────────
+export const addonApi = {
+  list: () => request<{ addons: AddonMarker[] }>('/addons'),
+  initiatePayment: (bookingId: string, biomarkerIds: string[]) =>
+    request<{
+      payment_key: string;
+      iframe_url: string;
+      order_id: string;
+      order: AddonOrder;
+      amount_egp: number;
+    }>('/payments/addons/initiate', {
+      method: 'POST',
+      body: { booking_id: bookingId, biomarker_ids: biomarkerIds },
+    }),
 };
 
 // ── Results ───────────────────────────────────────────────────────────────────

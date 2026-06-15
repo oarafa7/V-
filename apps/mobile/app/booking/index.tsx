@@ -3,7 +3,7 @@
  * (remaining slots); full windows are disabled. Shows the user's bookings with
  * cancel.
  */
-import type { Booking, DayAvailability, ServiceArea } from '@vital/shared';
+import type { AddonMarker, Booking, DayAvailability, ServiceArea } from '@vital/shared';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from 'react-native';
@@ -11,7 +11,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EmptyState, LucideIcon, toast } from '@/components/ui';
 import { colors } from '@/constants/theme';
-import { ApiError, bookingApi } from '@/lib/api';
+import { ApiError, addonApi, bookingApi } from '@/lib/api';
+import { useAddonStore } from '@/lib/store/addons';
+
+const VAT_RATE = 0.14;
+const egp = (n: number) => `EGP ${n.toLocaleString('en-US')}`;
 
 const today = () => new Date().toISOString().slice(0, 10);
 const fmtDay = (iso: string) => {
@@ -32,17 +36,26 @@ export default function BookTest() {
   const [booking, setBooking] = useState(false);
   // When set, picking a slot reschedules this booking instead of creating one.
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [addons, setAddons] = useState<AddonMarker[]>([]);
+  const selectedAddons = useAddonStore((s) => s.selected);
 
   useEffect(() => {
-    Promise.all([bookingApi.areas(), bookingApi.mine()])
-      .then(([a, b]) => {
+    Promise.all([bookingApi.areas(), bookingApi.mine(), addonApi.list().catch(() => ({ addons: [] }))])
+      .then(([a, b, ad]) => {
         setAreas(a.areas);
         setMine(b.bookings);
+        setAddons(ad.addons);
         if (a.areas.length) setAreaId(a.areas[0]!.id);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  // Running total of the extra markers the customer has selected (+ 14% VAT).
+  const addonSubtotal = addons
+    .filter((m) => selectedAddons.includes(m.id))
+    .reduce((sum, m) => sum + m.price_egp, 0);
+  const addonTotal = addonSubtotal + Math.round(addonSubtotal * VAT_RATE);
 
   useEffect(() => {
     if (!areaId) return;
@@ -67,7 +80,13 @@ export default function BookTest() {
         toast.success('Booking updated');
         setEditingId(null);
       } else {
-        await bookingApi.book(input);
+        const { booking: created } = await bookingApi.book(input);
+        // With extra markers selected, go straight to checkout to pay for them.
+        if (selectedAddons.length > 0) {
+          void refreshMine();
+          router.push(`/booking/addon-checkout?bookingId=${created.id}`);
+          return;
+        }
         toast.success('Test booked');
       }
       const r = await bookingApi.availability(areaId, today(), 14);
@@ -156,6 +175,26 @@ export default function BookTest() {
                 </View>
               ) : null}
             </View>
+          ) : null}
+
+          {/* Extra tests (add-ons) — hidden while rescheduling an existing booking */}
+          {!editingId && addons.length > 0 ? (
+            <Pressable
+              onPress={() => router.push('/booking/addons')}
+              className="mx-5 mb-4 flex-row items-center rounded-lg border p-4"
+              style={{ backgroundColor: colors.surface, borderColor: selectedAddons.length > 0 ? colors.gold : colors.border }}
+            >
+              <LucideIcon name="FlaskConical" size={20} color={colors.gold} />
+              <View className="ml-3 flex-1">
+                <Text className="font-body" style={{ color: colors.white, fontSize: 14 }}>Add extra tests</Text>
+                <Text className="font-mono" style={{ color: colors.textDim, fontSize: 12 }}>
+                  {selectedAddons.length > 0
+                    ? `${selectedAddons.length} selected · ${egp(addonTotal)} incl. VAT`
+                    : 'Markers not in your plan, paid at checkout'}
+                </Text>
+              </View>
+              <LucideIcon name="ChevronRight" size={20} color={colors.textMuted} />
+            </Pressable>
           ) : null}
 
           {/* Area chips */}

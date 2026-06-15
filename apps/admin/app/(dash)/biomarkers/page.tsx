@@ -37,6 +37,7 @@ interface FormState {
   max_plausible: string;
   display_order: string;
   tags: string;
+  addon_price_egp: string;
   is_active: boolean;
 }
 
@@ -56,6 +57,7 @@ const EMPTY_FORM: FormState = {
   max_plausible: '0',
   display_order: '0',
   tags: '',
+  addon_price_egp: '',
   is_active: true,
 };
 
@@ -132,6 +134,7 @@ export default function BiomarkersPage() {
       max_plausible: String(b.max_plausible),
       display_order: String(b.display_order),
       tags: b.tags.join(', '),
+      addon_price_egp: b.addon_price_egp != null ? String(b.addon_price_egp) : '',
       is_active: b.is_active,
     });
     setModalOpen(true);
@@ -158,6 +161,7 @@ export default function BiomarkersPage() {
         .split(',')
         .map((t) => t.trim())
         .filter((t) => t.length > 0),
+      addon_price_egp: form.addon_price_egp.trim() === '' ? null : Number(form.addon_price_egp),
       is_active: form.is_active,
     };
 
@@ -395,6 +399,16 @@ export default function BiomarkersPage() {
               />
             </Field>
           </div>
+
+          <Field label="Add-on price (EGP)">
+            <Input
+              type="number"
+              min={0}
+              value={form.addon_price_egp}
+              onChange={(e) => setForm({ ...form, addon_price_egp: e.target.value })}
+              placeholder="Leave blank if not sold as an add-on"
+            />
+          </Field>
 
           <label className="flex items-center gap-2 text-sm text-ink">
             <input

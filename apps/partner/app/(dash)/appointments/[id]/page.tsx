@@ -147,6 +147,29 @@ function AppointmentDetail() {
             ) : (
               <div className="text-sm text-inkMuted">No active subscription plan.</div>
             )}
+
+            {/* Extra paid markers bought for this visit (out-of-plan add-ons). */}
+            {(() => {
+              const extras = (detail.addon_orders ?? [])
+                .filter((o) => o.booking_id === appointment?.id)
+                .flatMap((o) => o.items);
+              if (extras.length === 0) return null;
+              return (
+                <div className="mt-4 border-t border-line pt-3">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-rust">
+                    Extra tests (paid add-ons)
+                  </div>
+                  <ul className="mt-2 space-y-1">
+                    {extras.map((it, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-ink">
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                        {it.name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
           </Card>
 
           {/* 1c. Scheduled appointment */}
