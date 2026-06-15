@@ -6,14 +6,16 @@
  *   POST /payments/webhook   (public) → Paymob transaction callback, HMAC-verified,
  *                                        activates the subscription on success
  */
-import { initiatePaymentSchema } from '@vital/shared';
+import { initiateAddonPaymentSchema, initiatePaymentSchema } from '@vital/shared';
 import { eq } from 'drizzle-orm';
 import { Hono } from 'hono';
 
 import { db } from '../db/client.js';
-import { subscriptionPlans, subscriptions } from '../db/schema.js';
+import { addonOrders, subscriptionPlans, subscriptions } from '../db/schema.js';
+import { createAddonOrder, markAddonOrderPaid } from '../lib/addons.js';
 import { errorResponse } from '../lib/http.js';
 import { initiatePayment, verifyWebhookHmac } from '../lib/paymob.js';
+import { serializeAddonOrder } from '../lib/serialize.js';
 import { type AuthVariables, requireAuth } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 
@@ -86,6 +88,44 @@ paymentRoutes.post(
   },
 );
 
+paymentRoutes.post(
+  '/addons/initiate',
+  requireAuth,
+  validate('json', initiateAddonPaymentSchema),
+  async (c) => {
+    const user = c.get('user');
+    const { booking_id, biomarker_ids } = c.req.valid('json');
+
+    const { order, items } = await createAddonOrder(user.id, booking_id, biomarker_ids);
+
+    const [firstName, ...rest] = user.fullName.split(' ');
+    const result = await initiatePayment({
+      amountEgp: order.totalEgp,
+      // "addon:" prefix lets the webhook reconcile against addon_orders, not subscriptions.
+      merchantOrderId: `addon:${order.id}`,
+      billing: {
+        email: user.email,
+        first_name: firstName || user.fullName,
+        last_name: rest.join(' ') || 'NA',
+        phone_number: user.phone ?? 'NA',
+      },
+    });
+
+    await db
+      .update(addonOrders)
+      .set({ paymentReference: result.order_id })
+      .where(eq(addonOrders.id, order.id));
+
+    return c.json({
+      payment_key: result.payment_key,
+      iframe_url: result.iframe_url,
+      order_id: result.order_id,
+      order: serializeAddonOrder(order, items),
+      amount_egp: order.totalEgp,
+    });
+  },
+);
+
 paymentRoutes.post('/webhook', async (c) => {
   const hmac = c.req.query('hmac');
   if (!hmac) return errorResponse(c, 'forbidden', 'Missing HMAC');
@@ -100,22 +140,26 @@ paymentRoutes.post('/webhook', async (c) => {
 
   const success = obj.success === true;
   const order = obj.order as { merchant_order_id?: string; id?: number } | undefined;
-  const subscriptionId = order?.merchant_order_id;
+  const merchantOrderId = order?.merchant_order_id;
 
-  if (!subscriptionId) {
+  if (!merchantOrderId) {
     // Acknowledge to stop Paymob retries, but nothing to reconcile.
+    return c.json({ received: true });
+  }
+
+  const reference = String(obj.id ?? order?.id ?? merchantOrderId);
+
+  // Add-on orders are tagged "addon:<orderId>"; everything else is a subscription.
+  if (merchantOrderId.startsWith('addon:')) {
+    if (success) await markAddonOrderPaid(merchantOrderId.slice('addon:'.length), reference);
     return c.json({ received: true });
   }
 
   if (success) {
     await db
       .update(subscriptions)
-      .set({
-        status: 'active',
-        startedAt: new Date(),
-        paymentReference: String(obj.id ?? order?.id ?? subscriptionId),
-      })
-      .where(eq(subscriptions.id, subscriptionId));
+      .set({ status: 'active', startedAt: new Date(), paymentReference: reference })
+      .where(eq(subscriptions.id, merchantOrderId));
   }
 
   return c.json({ received: true });

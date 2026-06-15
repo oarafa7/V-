@@ -13,6 +13,7 @@ import { Hono } from 'hono';
 
 import { db } from '../db/client.js';
 import { bookings, serviceAreas, users } from '../db/schema.js';
+import { listAddonMarkers } from '../lib/addons.js';
 import { cancelBooking, createBooking, rescheduleBooking, resolveRange } from '../lib/booking.js';
 import { errorResponse } from '../lib/http.js';
 import { partnerIdsForArea } from '../lib/lab-partner.js';
@@ -42,6 +43,11 @@ async function patientName(userId: string): Promise<string> {
   const [row] = await db.select({ name: users.fullName }).from(users).where(eq(users.id, userId)).limit(1);
   return row?.name ?? 'A patient';
 }
+
+/** Extra markers a customer can pay to add on top of their plan at checkout. */
+bookingRoutes.get('/addons', async (c) => {
+  return c.json({ addons: await listAddonMarkers() });
+});
 
 bookingRoutes.get('/areas', async (c) => {
   const rows = await db

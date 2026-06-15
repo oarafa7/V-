@@ -120,6 +120,8 @@ export const biomarkers = pgTable(
     isActive: boolean('is_active').notNull().default(true),
     displayOrder: integer('display_order').notNull().default(0),
     tags: text('tags').array().notNull().default([]),
+    // À-la-carte add-on price in EGP; null = not sold outside a plan.
+    addonPriceEgp: integer('addon_price_egp'),
   },
   (table) => ({
     slugIdx: uniqueIndex('biomarkers_slug_idx').on(table.slug),
@@ -452,6 +454,36 @@ export const bookings = pgTable('bookings', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** A paid order for extra (out-of-plan) markers attached to a booking. */
+export const addonOrders = pgTable('addon_orders', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  bookingId: uuid('booking_id')
+    .notNull()
+    .references(() => bookings.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('pending'), // pending | paid | cancelled
+  subtotalEgp: integer('subtotal_egp').notNull(),
+  vatEgp: integer('vat_egp').notNull(),
+  totalEgp: integer('total_egp').notNull(),
+  paymentReference: text('payment_reference'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Line items (one per extra marker) for an add-on order. */
+export const addonOrderItems = pgTable('addon_order_items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  orderId: uuid('order_id')
+    .notNull()
+    .references(() => addonOrders.id, { onDelete: 'cascade' }),
+  biomarkerId: uuid('biomarker_id')
+    .notNull()
+    .references(() => biomarkers.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(), // snapshot of the marker name at purchase time
+  priceEgp: integer('price_egp').notNull(),
+});
+
 /** Admin-managed messages a visiting doctor can push to a patient
  *  (e.g. "Doctor arriving within 30 minutes"). */
 export const notificationTemplates = pgTable('notification_templates', {
@@ -555,5 +587,7 @@ export type AvailabilityWindowRow = typeof availabilityWindows.$inferSelect;
 export type AvailabilityOverrideRow = typeof availabilityOverrides.$inferSelect;
 export type BookingSlotRow = typeof bookingSlots.$inferSelect;
 export type BookingRow = typeof bookings.$inferSelect;
+export type AddonOrderRow = typeof addonOrders.$inferSelect;
+export type AddonOrderItemRow = typeof addonOrderItems.$inferSelect;
 export type LabPartnerAreaRow = typeof labPartnerAreas.$inferSelect;
 export type NotificationTemplateRow = typeof notificationTemplates.$inferSelect;

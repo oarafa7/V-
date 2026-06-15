@@ -560,6 +560,8 @@ function biomarkerValues(b: ReturnType<typeof biomarkerInputSchema.parse>) {
     isActive: b.is_active ?? true,
     displayOrder: b.display_order ?? 0,
     tags: b.tags ?? [],
+    // null clears the add-on price; undefined (field omitted) leaves it untouched on update.
+    addonPriceEgp: b.addon_price_egp ?? null,
   };
 }
 

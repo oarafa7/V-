@@ -15,6 +15,8 @@ import { Hono } from 'hono';
 
 import { db } from '../db/client.js';
 import {
+  addonOrderItems,
+  addonOrders,
   biomarkers,
   bookings,
   labPartnerAreas,
@@ -30,6 +32,7 @@ import { confirmUpload, parseAndStoreUpload } from '../lib/lab-upload.js';
 import { activePlanSummary, partnerAreaIds, partnerCanAccessUser } from '../lib/lab-partner.js';
 import { notifyUser } from '../lib/notifications.js';
 import {
+  serializeAddonOrder,
   serializeArea,
   serializeBooking,
   serializeLabUpload,
@@ -142,12 +145,32 @@ labPartnerRoutes.get('/users/:userId', async (c) => {
     .where(eq(userBiomarkerResults.userId, userId))
     .orderBy(desc(userBiomarkerResults.testedAt));
 
+  // Paid extra markers (add-ons) the patient bought for their visits.
+  const paidOrders = await db
+    .select()
+    .from(addonOrders)
+    .where(and(eq(addonOrders.userId, userId), eq(addonOrders.status, 'paid')))
+    .orderBy(desc(addonOrders.createdAt));
+  const orderItems = paidOrders.length
+    ? await db
+        .select()
+        .from(addonOrderItems)
+        .where(inArray(addonOrderItems.orderId, paidOrders.map((o) => o.id)))
+    : [];
+  const itemsByOrder = new Map<string, typeof orderItems>();
+  for (const it of orderItems) {
+    const list = itemsByOrder.get(it.orderId) ?? [];
+    list.push(it);
+    itemsByOrder.set(it.orderId, list);
+  }
+
   return c.json({
     user: serializePartnerUserSummary(user),
     plan: await activePlanSummary(userId),
     appointments: userBookings.map((b) => serializeBooking(b.booking, b.areaName)),
     lab_uploads: uploads.map(serializeLabUpload),
     results: results.map(serializeResult),
+    addon_orders: paidOrders.map((o) => serializeAddonOrder(o, itemsByOrder.get(o.id) ?? [])),
   });
 });
 

@@ -92,6 +92,13 @@
       "when": 1781461504484,
       "tag": "0012_notification_templates",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1781519494881,
+      "tag": "0013_addons",
+      "breakpoints": true
     }
   ]
 }

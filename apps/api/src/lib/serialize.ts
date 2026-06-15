@@ -4,6 +4,7 @@
  * declared in `@vital/shared`.
  */
 import type {
+  AddonOrder,
   AiChatMessage,
   AiInsight,
   AiInsightSource,
@@ -33,6 +34,8 @@ import type {
 } from '@vital/shared';
 
 import type {
+  AddonOrderItemRow,
+  AddonOrderRow,
   AiChatMessageRow,
   AiInsightRow,
   AvailabilityOverrideRow,
@@ -141,6 +144,21 @@ export function serializeBiomarker(row: BiomarkerRow): Biomarker {
     is_active: row.isActive,
     display_order: row.displayOrder,
     tags: row.tags ?? [],
+    addon_price_egp: row.addonPriceEgp ?? null,
+  };
+}
+
+export function serializeAddonOrder(row: AddonOrderRow, items: AddonOrderItemRow[]): AddonOrder {
+  return {
+    id: row.id,
+    user_id: row.userId,
+    booking_id: row.bookingId,
+    status: row.status as AddonOrder['status'],
+    subtotal_egp: row.subtotalEgp,
+    vat_egp: row.vatEgp,
+    total_egp: row.totalEgp,
+    items: items.map((i) => ({ biomarker_id: i.biomarkerId, name: i.name, price_egp: i.priceEgp })),
+    created_at: iso(row.createdAt),
   };
 }
 

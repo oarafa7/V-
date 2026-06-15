@@ -226,6 +226,8 @@ export const biomarkerInputSchema = z
     is_active: z.boolean().optional().default(true),
     display_order: z.number().int().min(0).optional().default(0),
     tags: z.array(z.string().max(40)).max(12).optional().default([]),
+    // Null/0 = not sold as an add-on; a positive value lists it on the add-ons page.
+    addon_price_egp: z.number().int().min(0).max(1_000_000).nullable().optional(),
   })
   .refine(
     (b) =>
@@ -423,6 +425,13 @@ export const createBookingSchema = z.object({
   notes: z.string().max(400).optional(),
 });
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
+
+// Extra (add-on) markers purchased alongside a booking, paid at checkout.
+export const initiateAddonPaymentSchema = z.object({
+  booking_id: z.string().uuid(),
+  biomarker_ids: z.array(z.string().uuid()).min(1).max(30),
+});
+export type InitiateAddonPaymentInput = z.infer<typeof initiateAddonPaymentSchema>;
 
 // Lab partner management (admin-created accounts)
 export const createPartnerSchema = z.object({

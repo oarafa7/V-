@@ -166,6 +166,39 @@ export interface Biomarker {
   is_active: boolean;
   display_order: number;
   tags: string[];
+  /** À-la-carte add-on price in EGP; null/0 = not purchasable outside a plan. */
+  addon_price_egp: number | null;
+}
+
+/** A biomarker offered as a paid add-on (extra test) at booking checkout. */
+export interface AddonMarker {
+  id: UUID;
+  name: string;
+  unit: string;
+  category_id: UUID;
+  category_name: string;
+  price_egp: number;
+}
+
+export type AddonOrderStatus = 'pending' | 'paid' | 'cancelled';
+
+export interface AddonOrderItem {
+  biomarker_id: UUID;
+  name: string;
+  price_egp: number;
+}
+
+/** A paid (or pending) order for extra markers attached to a booking. */
+export interface AddonOrder {
+  id: UUID;
+  user_id: UUID;
+  booking_id: UUID;
+  status: AddonOrderStatus;
+  subtotal_egp: number;
+  vat_egp: number;
+  total_egp: number;
+  items: AddonOrderItem[];
+  created_at: string;
 }
 
 export interface BiomarkerWithCategory extends Biomarker {
@@ -651,6 +684,8 @@ export interface PartnerUserDetail {
   appointments: Booking[];
   lab_uploads: LabUpload[];
   results: UserBiomarkerResult[];
+  /** Paid extra markers (out-of-plan add-ons), grouped by booking. */
+  addon_orders: AddonOrder[];
 }
 
 /** An admin-managed message a visiting doctor can push to a patient

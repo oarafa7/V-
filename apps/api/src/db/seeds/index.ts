@@ -7,7 +7,7 @@
  */
 import { BIOMARKER_SEED, CATEGORY_SEED } from '@vital/shared/data/biomarkers.js';
 import { DEFAULT_APP_CONTENT } from '@vital/shared';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 
 import { db } from '../client.js';
 import {
@@ -248,6 +248,26 @@ async function seedNotificationTemplates() {
   ]);
 }
 
+/** Demo add-on prices (EGP) — only sets markers that don't already have one. */
+async function seedAddonPrices() {
+  const prices: Record<string, number> = {
+    'vitamin-d': 450,
+    ferritin: 350,
+    tsh: 300,
+    hba1c: 250,
+    testosterone: 500,
+    'vitamin-b12': 400,
+    'crp-hs': 300,
+    magnesium: 220,
+  };
+  for (const [slug, price] of Object.entries(prices)) {
+    await db
+      .update(biomarkers)
+      .set({ addonPriceEgp: price })
+      .where(and(eq(biomarkers.slug, slug), isNull(biomarkers.addonPriceEgp)));
+  }
+}
+
 async function main() {
   console.log('Seeding categories…');
   const slugToId = await seedCategories();
@@ -277,6 +297,9 @@ async function main() {
 
   console.log('Seeding notification templates…');
   await seedNotificationTemplates();
+
+  console.log('Seeding add-on prices…');
+  await seedAddonPrices();
 
   console.log('Seed complete.');
   process.exit(0);
