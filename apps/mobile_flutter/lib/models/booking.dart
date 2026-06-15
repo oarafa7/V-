@@ -74,6 +74,7 @@ class DayAvailability {
 /// A user's booking record.
 class Booking {
   final String id;
+  final String areaId;
   final String areaName;
   final String date;
   final String startTime;
@@ -84,6 +85,7 @@ class Booking {
 
   Booking({
     required this.id,
+    required this.areaId,
     required this.areaName,
     required this.date,
     required this.startTime,
@@ -95,6 +97,7 @@ class Booking {
 
   factory Booking.fromJson(Map<String, dynamic> j) => Booking(
         id: j['id'] as String,
+        areaId: (j['area_id'] as String?) ?? '',
         areaName: (j['area_name'] as String?) ?? '',
         date: (j['date'] as String?) ?? '',
         startTime: (j['start_time'] as String?) ?? '',

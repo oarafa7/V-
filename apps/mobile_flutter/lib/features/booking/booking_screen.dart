@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_client.dart';
+import '../../models/addon.dart';
 import '../../models/booking.dart';
 import '../../theme/tokens.dart';
+import 'addon_checkout_screen.dart';
+import 'addons_screen.dart';
+
+const _vatRate = 0.14;
 
 /// Book a Test — pick an area, a date, and an open time window. Capacity is live
 /// (remaining slots); full windows are disabled. Shows the user's bookings with
@@ -30,11 +35,19 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
   List<DayAvailability> _days = const [];
   int _dateIdx = 0;
   List<Booking> _mine = const [];
+  List<AddonMarker> _addons = const [];
+  // When set, picking a slot reschedules this booking instead of creating one.
+  String? _editingId;
 
   bool _loading = true;
   bool _loadingSlots = false;
   bool _booking = false;
   String? _error;
+
+  int get _addonSubtotal => _addons
+      .where((m) => AddonSelection.isSelected(m.id))
+      .fold(0, (sum, m) => sum + m.priceEgp);
+  int get _addonTotal => _addonSubtotal + (_addonSubtotal * _vatRate).round();
 
   @override
   void initState() {
@@ -61,10 +74,20 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           .cast<Map<String, dynamic>>()
           .map(Booking.fromJson)
           .toList();
+      // Add-ons are optional — a failure here shouldn't block the booking flow.
+      List<AddonMarker> addons = const [];
+      try {
+        final ar = await api.get('/addons');
+        addons = ((ar.data['addons'] as List?) ?? const [])
+            .cast<Map<String, dynamic>>()
+            .map(AddonMarker.fromJson)
+            .toList();
+      } catch (_) {/* no add-ons available */}
       if (!mounted) return;
       setState(() {
         _areas = areas;
         _mine = mine;
+        _addons = addons;
         _areaId = areas.isNotEmpty ? areas.first.id : null;
         _loading = false;
       });
@@ -128,31 +151,87 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
     _loadAvailability();
   }
 
-  Future<void> _book(String date, String startTime, String endTime) async {
+  Future<void> _pickSlot(String date, String startTime, String endTime) async {
     final areaId = _areaId;
     if (areaId == null || _booking) return;
     setState(() => _booking = true);
     try {
-      await ref.read(apiProvider).dio.post('/bookings', data: {
+      final data = {
         'area_id': areaId,
         'date': date,
         'start_time': startTime,
         'end_time': endTime,
-      });
-      if (mounted) _snack('Test booked');
+      };
+      final editingId = _editingId;
+      if (editingId != null) {
+        await ref.read(apiProvider).dio.put('/bookings/$editingId', data: data);
+        if (mounted) {
+          _snack('Booking updated');
+          setState(() => _editingId = null);
+        }
+      } else {
+        final r = await ref.read(apiProvider).dio.post('/bookings', data: data);
+        final created = Booking.fromJson(r.data['booking'] as Map<String, dynamic>);
+        // With extra markers selected, go straight to checkout to pay for them.
+        if (AddonSelection.selected.isNotEmpty && mounted) {
+          await _refreshMine();
+          await Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => AddonCheckoutScreen(bookingId: created.id)),
+          );
+          if (mounted) setState(() {}); // reflect cleared selection on return
+          return;
+        }
+        if (mounted) _snack('Test booked');
+      }
       await _loadAvailability();
       await _refreshMine();
     } catch (_) {
-      if (mounted) _snack('Could not book');
+      if (mounted) _snack(_editingId != null ? 'Could not update' : 'Could not book');
     } finally {
       if (mounted) setState(() => _booking = false);
     }
   }
 
+  // Enter reschedule mode: focus the booking's area so its availability shows.
+  void _startEdit(Booking b) {
+    setState(() => _editingId = b.id);
+    _selectArea(b.areaId);
+  }
+
+  void _confirmCancel(Booking b) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: T.card,
+        title: Text('Cancel booking?', style: display(18, color: T.ink)),
+        content: Text(
+          'Your home test in ${b.areaName} on ${b.date} at ${b.startTime} will be cancelled.',
+          style: bodyText(14, color: T.inkSoft),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text('Keep booking', style: bodyText(14, color: T.inkSoft)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _cancel(b.id);
+            },
+            child: Text('Cancel booking', style: bodyText(14, weight: FontWeight.w600, color: T.rust)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _cancel(String id) async {
     try {
       await ref.read(apiProvider).dio.post('/bookings/$id/cancel');
-      if (mounted) _snack('Booking cancelled');
+      if (mounted) {
+        _snack('Booking cancelled');
+        if (_editingId == id) setState(() => _editingId = null);
+      }
       await _refreshMine();
       await _loadAvailability();
     } catch (_) {
@@ -215,7 +294,55 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
         if (mineBooked.isNotEmpty) ...[
           const SizedBox(height: 8),
           _label('Your bookings'),
-          for (final b in mineBooked) _BookingCard(b, onCancel: () => _cancel(b.id)),
+          for (final b in mineBooked)
+            _BookingCard(
+              b,
+              editing: _editingId == b.id,
+              onEdit: () {
+                if (_editingId == b.id) {
+                  setState(() => _editingId = null);
+                } else {
+                  _startEdit(b);
+                }
+              },
+              onCancel: () => _confirmCancel(b),
+            ),
+          if (_editingId != null)
+            Container(
+              margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: T.accent.withOpacity(0.10),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text('Pick a new time below to reschedule.',
+                        style: bodyText(12, color: T.accent)),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(() => _editingId = null),
+                    child: Text('Cancel edit', style: bodyText(12, color: T.inkSoft)),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
+        ],
+        // Extra tests (add-ons) — hidden while rescheduling an existing booking.
+        if (_editingId == null && _addons.isNotEmpty) ...[
+          _AddonEntry(
+            count: _addons.where((m) => AddonSelection.isSelected(m.id)).length,
+            total: _addonTotal,
+            onTap: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AddonsScreen()),
+              );
+              if (mounted) setState(() {}); // reflect new selection
+            },
+          ),
           const SizedBox(height: 8),
         ],
         _label('Area'),
@@ -299,7 +426,7 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
           _SlotCard(
             s,
             disabled: s.isFull || _booking,
-            onTap: () => _book(day.date, s.startTime, s.endTime),
+            onTap: () => _pickSlot(day.date, s.startTime, s.endTime),
           ),
       ],
     );
@@ -316,8 +443,11 @@ class _BookingScreenState extends ConsumerState<BookingScreen> {
 
 class _BookingCard extends StatelessWidget {
   final Booking booking;
+  final bool editing;
+  final VoidCallback onEdit;
   final VoidCallback onCancel;
-  const _BookingCard(this.booking, {required this.onCancel});
+  const _BookingCard(this.booking,
+      {required this.editing, required this.onEdit, required this.onCancel});
 
   @override
   Widget build(BuildContext context) {
@@ -327,7 +457,7 @@ class _BookingCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: T.panel,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: T.line),
+        border: Border.all(color: editing ? T.accent : T.line),
       ),
       child: Row(
         children: [
@@ -342,10 +472,62 @@ class _BookingCard extends StatelessWidget {
             ),
           ),
           TextButton(
+            onPressed: onEdit,
+            child: Text(editing ? 'Done' : 'Edit',
+                style: bodyText(13, weight: FontWeight.w600, color: T.accent)),
+          ),
+          TextButton(
             onPressed: onCancel,
             child: Text('Cancel', style: bodyText(13, weight: FontWeight.w600, color: T.rust)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "Add extra tests" entry that opens the add-ons page; shows the running total
+/// when markers are selected.
+class _AddonEntry extends StatelessWidget {
+  final int count;
+  final int total;
+  final VoidCallback onTap;
+  const _AddonEntry({required this.count, required this.total, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: T.panel,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: count > 0 ? T.accent : T.line),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.science_outlined, size: 20, color: T.accent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Add extra tests', style: bodyText(14, color: T.ink)),
+                  const SizedBox(height: 2),
+                  Text(
+                    count > 0
+                        ? '$count selected · EGP $total incl. VAT'
+                        : 'Markers not in your plan, paid at checkout',
+                    style: bodyText(12, color: T.inkMuted),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, size: 20, color: T.inkMuted),
+          ],
+        ),
       ),
     );
   }
