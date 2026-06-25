@@ -180,6 +180,29 @@ export interface AddonMarker {
   price_egp: number;
 }
 
+/** An admin-managed bookable lab test (à-la-carte). */
+export interface LabTest {
+  id: UUID;
+  name: string;
+  price_egp: number;
+}
+
+/** A group of lab tests shown as one package on the booking screens. */
+export interface LabPackage {
+  id: UUID;
+  name: string;
+  description: string;
+  is_active: boolean;
+  tests: LabTest[];
+}
+
+/** Result of an Excel batch import of lab packages. */
+export interface LabPackageImportResult {
+  packages_upserted: number;
+  tests_imported: number;
+  errors: { row: number; message: string }[];
+}
+
 export type AddonOrderStatus = 'pending' | 'paid' | 'cancelled';
 
 export interface AddonOrderItem {

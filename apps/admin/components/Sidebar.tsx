@@ -13,6 +13,7 @@ const NAV = [
   { href: '/bookings', label: 'Bookings' },
   { href: '/partners', label: 'Lab Partners' },
   { href: '/biomarkers', label: 'Biomarkers' },
+  { href: '/lab-packages', label: 'Lab Packages' },
   { href: '/categories', label: 'Categories' },
   { href: '/goals', label: 'Health Goals' },
   { href: '/content', label: 'App Content' },

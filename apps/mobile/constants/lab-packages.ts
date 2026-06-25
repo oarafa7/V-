@@ -1,30 +1,17 @@
 /**
- * Lab-test packages shown on the "Book Lab Tests" tab and the "Add-on Lab Tests"
- * step of the booking flow.
- *
- * ▸ THIS IS THE LIST YOU UPLOAD/EDIT. Replace the sample packages below with your
- *   real packages, tests, and EGP prices. Each package is rendered as its own
- *   group with a "select all" control and a package total; the customer can also
- *   tick individual tests. Keep `id`s unique and stable.
+ * Fallback lab-test packages. The live catalogue is managed in the Admin
+ * dashboard (uploaded via Excel) and fetched from `GET /lab-packages`; this
+ * bundled list is only used if that request returns nothing (e.g. offline or
+ * before any packages have been uploaded).
  */
-export interface LabTest {
-  id: string;
-  name: string;
-  price_egp: number;
-}
-
-export interface LabPackage {
-  id: string;
-  name: string;
-  description?: string;
-  tests: LabTest[];
-}
+import type { LabPackage } from '@vital/shared';
 
 export const LAB_PACKAGES: LabPackage[] = [
   {
     id: 'metabolic',
     name: 'Metabolic & Diabetes',
     description: 'Blood sugar, lipids and metabolic markers',
+    is_active: true,
     tests: [
       { id: 'fasting-glucose', name: 'Fasting Blood Glucose', price_egp: 90 },
       { id: 'hba1c', name: 'HbA1c', price_egp: 220 },
@@ -37,6 +24,7 @@ export const LAB_PACKAGES: LabPackage[] = [
     id: 'thyroid',
     name: 'Thyroid Panel',
     description: 'Full thyroid function',
+    is_active: true,
     tests: [
       { id: 'tsh', name: 'TSH', price_egp: 180 },
       { id: 'free-t3', name: 'Free T3', price_egp: 200 },
@@ -47,6 +35,7 @@ export const LAB_PACKAGES: LabPackage[] = [
     id: 'vitamins',
     name: 'Vitamins & Minerals',
     description: 'Common deficiency markers',
+    is_active: true,
     tests: [
       { id: 'vitamin-d', name: 'Vitamin D (25-OH)', price_egp: 350 },
       { id: 'vitamin-b12', name: 'Vitamin B12', price_egp: 260 },

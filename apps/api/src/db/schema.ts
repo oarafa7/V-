@@ -599,3 +599,30 @@ export type AddonOrderRow = typeof addonOrders.$inferSelect;
 export type AddonOrderItemRow = typeof addonOrderItems.$inferSelect;
 export type LabPartnerAreaRow = typeof labPartnerAreas.$inferSelect;
 export type NotificationTemplateRow = typeof notificationTemplates.$inferSelect;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// lab_packages / lab_tests — admin-managed à-la-carte test packages (bookable
+// "Book Extra Lab Tests" / "Add-on Lab Tests"). Populated via Excel batch upload.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const labPackages = pgTable('lab_packages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  displayOrder: integer('display_order').notNull().default(0),
+  isActive: boolean('is_active').notNull().default(true),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const labTests = pgTable('lab_tests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  packageId: uuid('package_id')
+    .notNull()
+    .references(() => labPackages.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  priceEgp: integer('price_egp').notNull().default(0),
+  displayOrder: integer('display_order').notNull().default(0),
+});
+
+export type LabPackageRow = typeof labPackages.$inferSelect;
+export type LabTestRow = typeof labTests.$inferSelect;

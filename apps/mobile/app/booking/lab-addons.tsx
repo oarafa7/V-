@@ -3,13 +3,17 @@
  * day. Same grouped package selector as the Book Lab Tests tab; here it adds
  * tests onto the booking that was just made.
  */
+import type { LabPackage } from '@vital/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LabPackageList } from '@/components/LabPackageList';
 import { LucideIcon, toast } from '@/components/ui';
+import { LAB_PACKAGES } from '@/constants/lab-packages';
 import { colors } from '@/constants/theme';
+import { labPackageApi } from '@/lib/api';
 import { useLabPackageStore } from '@/lib/store/lab-packages';
 
 export default function LabAddons() {
@@ -17,6 +21,14 @@ export default function LabAddons() {
   const insets = useSafeAreaInsets();
   const { bookingId } = useLocalSearchParams<{ bookingId?: string }>();
   const clear = useLabPackageStore((s) => s.clear);
+  const [packages, setPackages] = useState<LabPackage[] | null>(null);
+
+  useEffect(() => {
+    labPackageApi
+      .list()
+      .then((r) => setPackages(r.lab_packages.length ? r.lab_packages : LAB_PACKAGES))
+      .catch(() => setPackages(LAB_PACKAGES));
+  }, []);
 
   const skip = () => {
     clear();
@@ -48,15 +60,22 @@ export default function LabAddons() {
           <LucideIcon name="ChevronRight" size={16} color={colors.textMuted} />
         </Pressable>
       </View>
-      <LabPackageList
-        submitLabel="Add to my booking"
-        note={
-          bookingId
-            ? 'Add extra tests to the home draw you just booked — no second visit needed.'
-            : 'Add extra tests to your booking.'
-        }
-        onSubmit={confirm}
-      />
+      {packages === null ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color={colors.gold} />
+        </View>
+      ) : (
+        <LabPackageList
+          packages={packages}
+          submitLabel="Add to my booking"
+          note={
+            bookingId
+              ? 'Add extra tests to the home draw you just booked — no second visit needed.'
+              : 'Add extra tests to your booking.'
+          }
+          onSubmit={confirm}
+        />
+      )}
     </View>
   );
 }

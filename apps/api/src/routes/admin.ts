@@ -55,6 +55,7 @@ import {
   healthGoals,
   interventions,
   labPartnerAreas,
+  labPackages,
   labUploads,
   notificationTemplates,
   notifications,
@@ -68,6 +69,7 @@ import { generateAndStoreInsights } from '../lib/ai.js';
 import { getAiConfig, setAiConfig } from '../lib/ai-config.js';
 import { getAppContent, setAppContent } from '../lib/content.js';
 import { getNotificationConfig, setNotificationConfig } from '../lib/notification-config.js';
+import { importLabPackagesFromBuffer, listLabPackages } from '../lib/lab-packages.js';
 import { confirmUpload, parseAndStoreUpload } from '../lib/lab-upload.js';
 import { generateUserNotifications } from '../lib/notifications.js';
 import { computeUserRecommendations } from '../lib/recommendations.js';
@@ -1291,5 +1293,39 @@ adminRoutes.delete('/notification-templates/:id', async (c) => {
     .where(eq(notificationTemplates.id, c.req.param('id')))
     .returning();
   if (!deleted) return errorResponse(c, 'not_found', 'Template not found');
+  return c.json({ success: true });
+});
+
+// ── Lab packages (Book Extra Lab Tests / Add-on Lab Tests) ──────────────────
+
+/** All packages with their tests (admin view — includes inactive). */
+adminRoutes.get('/lab-packages', async (c) => {
+  const packages = await listLabPackages();
+  return c.json({ lab_packages: packages });
+});
+
+/**
+ * Batch-import packages from an Excel/CSV sheet with columns:
+ * package name | test name | price. Each package is upserted by name and its
+ * tests replaced with the sheet rows.
+ */
+adminRoutes.post('/lab-packages/import', async (c) => {
+  const body = await c.req.parseBody();
+  const file = body['file'];
+  if (!(file instanceof File)) {
+    return errorResponse(c, 'validation_error', 'Attach an .xlsx/.csv file under the "file" field');
+  }
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const result = await importLabPackagesFromBuffer(buffer);
+  return c.json(result);
+});
+
+/** Delete a package (cascades to its tests). */
+adminRoutes.delete('/lab-packages/:id', async (c) => {
+  const [deleted] = await db
+    .delete(labPackages)
+    .where(eq(labPackages.id, c.req.param('id')))
+    .returning({ id: labPackages.id });
+  if (!deleted) return errorResponse(c, 'not_found', 'Package not found');
   return c.json({ success: true });
 });

@@ -5,6 +5,7 @@
  */
 import type {
   AddonMarker,
+  LabPackage,
   AddonOrder,
   AiChatMessage,
   AiInsight,
@@ -210,6 +211,10 @@ export const notificationApi = {
 };
 
 // ── Add-ons (extra paid markers at booking checkout) ───────────────────────────
+export const labPackageApi = {
+  list: () => request<{ lab_packages: LabPackage[] }>('/lab-packages'),
+};
+
 export const addonApi = {
   list: () => request<{ addons: AddonMarker[] }>('/addons'),
   initiatePayment: (bookingId: string, biomarkerIds: string[]) =>

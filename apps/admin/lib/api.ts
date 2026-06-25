@@ -12,6 +12,8 @@ import type {
   AiInsight,
   AiUsageStats,
   AdminBooking,
+  LabPackage,
+  LabPackageImportResult,
   AppContent,
   AppContentInput,
   AssignPartnerAreasInput,
@@ -326,4 +328,14 @@ export const api = {
     }),
   deletePartner: (id: string) =>
     request<{ success: boolean }>(`/admin/partners/${id}`, { method: 'DELETE' }),
+
+  // lab packages (Book Extra Lab Tests / Add-on Lab Tests)
+  labPackages: () => request<{ lab_packages: LabPackage[] }>('/admin/lab-packages'),
+  importLabPackages: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return request<LabPackageImportResult>('/admin/lab-packages/import', { method: 'POST', form });
+  },
+  deleteLabPackage: (id: string) =>
+    request<{ success: boolean }>(`/admin/lab-packages/${id}`, { method: 'DELETE' }),
 };

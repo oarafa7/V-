@@ -8,13 +8,10 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import type { LabPackage } from '@vital/shared';
+
 import { Button, LucideIcon } from '@/components/ui';
-import {
-  LAB_PACKAGES,
-  type LabPackage,
-  labPackageTestIds,
-  labPackageTotal,
-} from '@/constants/lab-packages';
+import { LAB_PACKAGES, labPackageTestIds, labPackageTotal } from '@/constants/lab-packages';
 import { colors } from '@/constants/theme';
 import { useLabPackageStore } from '@/lib/store/lab-packages';
 
