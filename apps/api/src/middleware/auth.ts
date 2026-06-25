@@ -8,7 +8,9 @@ import { createMiddleware } from 'hono/factory';
 import { db } from '../db/client.js';
 import { users } from '../db/schema.js';
 import type { UserRow } from '../db/schema.js';
+import { localAuth } from '../lib/env.js';
 import { errorResponse } from '../lib/http.js';
+import { verifyLocalToken } from '../lib/local-auth.js';
 import { supabaseAdmin } from '../lib/supabase.js';
 
 export interface AuthVariables {
@@ -24,12 +26,21 @@ export const requireAuth = createMiddleware<{ Variables: AuthVariables }>(
     }
 
     const token = header.slice('Bearer '.length).trim();
-    const { data, error } = await supabaseAdmin.auth.getUser(token);
-    if (error || !data.user) {
+
+    // Resolve the authenticated user id from the token — locally-signed JWT in
+    // local mode, otherwise verified against Supabase Auth.
+    let userId: string | null;
+    if (localAuth) {
+      userId = await verifyLocalToken(token);
+    } else {
+      const { data, error } = await supabaseAdmin!.auth.getUser(token);
+      userId = error || !data.user ? null : data.user.id;
+    }
+    if (!userId) {
       return errorResponse(c, 'unauthorized', 'Invalid or expired session token');
     }
 
-    const [row] = await db.select().from(users).where(eq(users.id, data.user.id)).limit(1);
+    const [row] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!row) {
       return errorResponse(c, 'unauthorized', 'User profile not found');
     }

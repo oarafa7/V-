@@ -139,6 +139,7 @@ export function verifyWebhookHmac(
   obj: Record<string, unknown>,
   receivedHmac: string,
 ): boolean {
+  if (!env.PAYMOB_HMAC_SECRET) return false; // payments not configured
   const concatenated = HMAC_FIELD_ORDER.map((field) => {
     const value = getNested(obj, field);
     return value === undefined || value === null ? '' : String(value);

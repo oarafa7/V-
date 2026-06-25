@@ -13,6 +13,7 @@ import { Hono } from 'hono';
 import { db } from '../db/client.js';
 import { addonOrders, subscriptionPlans, subscriptions } from '../db/schema.js';
 import { createAddonOrder, markAddonOrderPaid } from '../lib/addons.js';
+import { flags, localAuth } from '../lib/env.js';
 import { errorResponse } from '../lib/http.js';
 import { initiatePayment, verifyWebhookHmac } from '../lib/paymob.js';
 import { serializeAddonOrder } from '../lib/serialize.js';
@@ -28,6 +29,9 @@ paymentRoutes.post(
   requireAuth,
   validate('json', initiatePaymentSchema),
   async (c) => {
+    if (!flags.payments) {
+      return errorResponse(c, 'unprocessable', 'Payments are not configured in this environment');
+    }
     const user = c.get('user');
     const { plan_id } = c.req.valid('json');
 
@@ -93,6 +97,9 @@ paymentRoutes.post(
   requireAuth,
   validate('json', initiateAddonPaymentSchema),
   async (c) => {
+    if (!flags.payments) {
+      return errorResponse(c, 'unprocessable', 'Payments are not configured in this environment');
+    }
     const user = c.get('user');
     const { booking_id, biomarker_ids } = c.req.valid('json');
 
@@ -164,3 +171,33 @@ paymentRoutes.post('/webhook', async (c) => {
 
   return c.json({ received: true });
 });
+
+// Local dev only: activate a subscription without Paymob so the subscription
+// gate can be exercised offline. Never registered when payments are configured.
+if (localAuth) {
+  paymentRoutes.post('/dev-activate', requireAuth, async (c) => {
+    const user = c.get('user');
+    const body = (await c.req.json().catch(() => ({}))) as { plan_id?: string };
+
+    const [plan] = body.plan_id
+      ? await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, body.plan_id)).limit(1)
+      : await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.isActive, true)).limit(1);
+    if (!plan) return errorResponse(c, 'not_found', 'No subscription plan found — seed the database first');
+
+    const expiresAt = new Date();
+    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+    const [row] = await db
+      .insert(subscriptions)
+      .values({
+        userId: user.id,
+        planId: plan.id,
+        status: 'active',
+        startedAt: new Date(),
+        expiresAt,
+        paymentReference: 'local-dev',
+      })
+      .returning();
+
+    return c.json({ success: true, subscription_id: row!.id, plan: plan.name, expires_at: expiresAt.toISOString() });
+  });
+}

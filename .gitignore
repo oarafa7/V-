@@ -43,3 +43,6 @@ apps/api/drizzle/meta/_journal.json.bak
 # Misc
 coverage/
 *.local
+
+# Local lab-file storage (API local mode)
+apps/api/.local-storage/

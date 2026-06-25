@@ -36,10 +36,13 @@ import {
   serviceAreaUpdateSchema,
   updateSubscriptionSchema,
 } from '@vital/shared';
+import { randomUUID } from 'node:crypto';
+
 import { and, asc, desc, eq, gt, ilike, inArray, isNull, or, sql } from 'drizzle-orm';
 import { Hono } from 'hono';
 
 import { db } from '../db/client.js';
+import { localAuth } from '../lib/env.js';
 import {
   aiChatMessages,
   aiInsights,
@@ -1165,23 +1168,31 @@ adminRoutes.get('/partners', async (c) => {
 adminRoutes.post('/partners', validate('json', createPartnerSchema), async (c) => {
   const { email, full_name, password, phone } = c.req.valid('json');
 
-  const { data, error } = await supabaseAdmin.auth.admin.createUser({
-    email,
-    password,
-    phone,
-    email_confirm: true,
-    user_metadata: { full_name },
-  });
-  if (error || !data.user) {
-    if (error?.message?.toLowerCase().includes('already')) {
-      return errorResponse(c, 'conflict', 'An account with this email already exists');
+  let authUserId: string;
+  if (localAuth) {
+    const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
+    if (existing) return errorResponse(c, 'conflict', 'An account with this email already exists');
+    authUserId = randomUUID();
+  } else {
+    const { data, error } = await supabaseAdmin!.auth.admin.createUser({
+      email,
+      password,
+      phone,
+      email_confirm: true,
+      user_metadata: { full_name },
+    });
+    if (error || !data.user) {
+      if (error?.message?.toLowerCase().includes('already')) {
+        return errorResponse(c, 'conflict', 'An account with this email already exists');
+      }
+      return errorResponse(c, 'unprocessable', error?.message ?? 'Could not create account');
     }
-    return errorResponse(c, 'unprocessable', error?.message ?? 'Could not create account');
+    authUserId = data.user.id;
   }
 
   const [row] = await db
     .insert(users)
-    .values({ id: data.user.id, email, fullName: full_name, phone, role: 'lab_partner' })
+    .values({ id: authUserId, email, fullName: full_name, phone, role: 'lab_partner' })
     .returning();
   if (!row) return errorResponse(c, 'server_error', 'Failed to persist partner profile');
 

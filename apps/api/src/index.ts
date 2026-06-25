@@ -10,7 +10,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 
-import { env } from './lib/env.js';
+import { env, flags, localAuth } from './lib/env.js';
 import { ApiException, errorResponse } from './lib/http.js';
 import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
@@ -66,6 +66,18 @@ app.notFound((c) => errorResponse(c, 'not_found', 'Route not found'));
 
 serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   console.log(`VITAL API listening on http://localhost:${info.port}`);
+  if (localAuth) {
+    console.warn(
+      '⚠️  LOCAL DEV MODE: Supabase not configured — auth uses locally-signed JWTs ' +
+        '(passwords are not verified) and lab files are written to disk.',
+    );
+  }
+  if (!flags.payments) {
+    console.warn(
+      '⚠️  Payments disabled (Paymob not configured). Use POST /api/v1/payments/dev-activate ' +
+        'to grant a local subscription.',
+    );
+  }
 });
 
 export { app };
