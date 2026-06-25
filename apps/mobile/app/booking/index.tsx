@@ -81,13 +81,14 @@ export default function BookTest() {
         setEditingId(null);
       } else {
         const { booking: created } = await bookingApi.book(input);
-        // With extra markers selected, go straight to checkout to pay for them.
+        void refreshMine();
+        // After the test day is chosen, offer add-on lab tests.
         if (selectedAddons.length > 0) {
-          void refreshMine();
           router.push(`/booking/addon-checkout?bookingId=${created.id}`);
-          return;
+        } else {
+          router.push(`/booking/lab-addons?bookingId=${created.id}`);
         }
-        toast.success('Test booked');
+        return;
       }
       const r = await bookingApi.availability(areaId, today(), 14);
       setDays(r.availability);

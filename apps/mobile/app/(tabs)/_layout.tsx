@@ -50,6 +50,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="book-lab-tests"
+        options={{
+          title: 'Book Tests',
+          tabBarIcon: ({ color }) => <LucideIcon name="TestTube" size={20} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
